@@ -88,31 +88,51 @@ export function MatchesManager() {
         '2026-06-23', '2026-06-24', '2026-06-25', '2026-06-26', '2026-06-27'
       ];
       
+      const worldCupGroups: Record<string, string[]> = {
+        'A': ['المكسيك', 'كوريا الجنوبية', 'التشيك', 'جنوب أفريقيا'],
+        'B': ['كندا', 'سويسرا', 'البوسنة والهرسك', 'قطر'],
+        'C': ['البرازيل', 'المغرب', 'اسكتلندا', 'هايتي'],
+        'D': ['أمريكا', 'باراغواي', 'أستراليا', 'تركيا'],
+        'E': ['ألمانيا', 'ساحل العاج', 'الإكوادور', 'كوراساو'],
+        'F': ['هولندا', 'اليابان', 'السويد', 'تونس'],
+        'G': ['بلجيكا', 'إيران', 'مصر', 'نيوزيلندا'],
+        'H': ['إسبانيا', 'الأوروغواي', 'السعودية', 'الرأس الأخضر'],
+        'I': ['فرنسا', 'النرويج', 'السنغال', 'العراق'],
+        'J': ['الأرجنتين', 'النمسا', 'الجزائر', 'الأردن'],
+        'K': ['البرتغال', 'كولومبيا', 'أوزبكستان', 'الكونغو الديمقراطية'],
+        'L': ['إنجلترا', 'كرواتيا', 'غانا', 'بنما']
+      };
+
       const timeSlots = ["20:00", "23:00", "02:00", "05:00"];
       const groupsList = ["A","B","C","D","E","F","G","H","I","J","K","L"];
       
       const groupMatches: Record<string, any[]> = {};
       groupsList.forEach(g => {
-        const topSeed = g === 'A' ? 'المكسيك' : g === 'B' ? 'كندا' : g === 'D' ? 'أمريكا' : `${g}1`;
+        const teams = worldCupGroups[g];
+        const t1 = teams[0];
+        const t2 = teams[1];
+        const t3 = teams[2];
+        const t4 = teams[3];
+
         groupMatches[g] = [
-          {h: topSeed, a: `${g}2`},
-          {h: `${g}3`, a: `${g}4`},
-          {h: topSeed, a: `${g}3`},
-          {h: `${g}4`, a: `${g}2`},
-          {h: `${g}4`, a: topSeed},
-          {h: `${g}2`, a: `${g}3`}
+          {h: t1, a: t2},
+          {h: t3, a: t4},
+          {h: t1, a: t3},
+          {h: t4, a: t2},
+          {h: t4, a: t1},
+          {h: t2, a: t3}
         ];
       });
 
       // Special Match 1 to 8 assignment based on dates
-      addMatch('2026-06-11', '23:00', 'المجموعة A - الجولة 1', 'المكسيك', 'A2');
-      addMatch('2026-06-11', '05:00', 'المجموعة A - الجولة 1', 'A3', 'A4');
-      addMatch('2026-06-12', '02:00', 'المجموعة B - الجولة 1', 'كندا', 'B2');
-      addMatch('2026-06-12', '05:00', 'المجموعة D - الجولة 1', 'أمريكا', 'D2');
-      addMatch('2026-06-13', '20:00', 'المجموعة C - الجولة 1', 'C1', 'C2');
-      addMatch('2026-06-13', '23:00', 'المجموعة C - الجولة 1', 'C3', 'C4');
-      addMatch('2026-06-13', '02:00', 'المجموعة B - الجولة 1', 'B3', 'B4');
-      addMatch('2026-06-13', '05:00', 'المجموعة D - الجولة 1', 'D3', 'D4');
+      addMatch('2026-06-11', '23:00', 'المجموعة A - الجولة 1', worldCupGroups['A'][0], worldCupGroups['A'][1]);
+      addMatch('2026-06-11', '05:00', 'المجموعة A - الجولة 1', worldCupGroups['A'][2], worldCupGroups['A'][3]);
+      addMatch('2026-06-12', '02:00', 'المجموعة B - الجولة 1', worldCupGroups['B'][0], worldCupGroups['B'][1]);
+      addMatch('2026-06-12', '05:00', 'المجموعة D - الجولة 1', worldCupGroups['D'][0], worldCupGroups['D'][1]);
+      addMatch('2026-06-13', '20:00', 'المجموعة C - الجولة 1', worldCupGroups['C'][0], worldCupGroups['C'][1]);
+      addMatch('2026-06-13', '23:00', 'المجموعة C - الجولة 1', worldCupGroups['C'][2], worldCupGroups['C'][3]);
+      addMatch('2026-06-13', '02:00', 'المجموعة B - الجولة 1', worldCupGroups['B'][2], worldCupGroups['B'][3]);
+      addMatch('2026-06-13', '05:00', 'المجموعة D - الجولة 1', worldCupGroups['D'][2], worldCupGroups['D'][3]);
 
       let remainingGroupMatches: any[] = [];
       groupsList.forEach(g => {
@@ -127,13 +147,16 @@ export function MatchesManager() {
       });
 
       let dayIdx = 3; // Start from 2026-06-14
-      let slotIdx = 0;
-      remainingGroupMatches.forEach(rm => {
-        addMatch(dates[dayIdx], timeSlots[slotIdx], `المجموعة ${rm.g} - الجولة ${rm.round}`, rm.h, rm.a);
-        slotIdx++;
-        if(slotIdx >= 4) {
-          slotIdx = 0;
-          dayIdx++;
+      let matchesToday = 0;
+      remainingGroupMatches.forEach((rm) => {
+        let maxToday = (dayIdx >= 13) ? 6 : 4;
+        let t = timeSlots[matchesToday % 4];
+        addMatch(dates[dayIdx], t, `المجموعة ${rm.g} - الجولة ${rm.round}`, rm.h, rm.a);
+        
+        matchesToday++;
+        if(matchesToday >= maxToday) {
+          matchesToday = 0;
+          if (dayIdx < dates.length - 1) dayIdx++;
         }
       });
 
