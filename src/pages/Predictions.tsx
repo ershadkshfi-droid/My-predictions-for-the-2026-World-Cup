@@ -22,6 +22,7 @@ interface Prediction {
   home_score: number;
   away_score: number;
   penalty_prediction: 'none' | 'home' | 'away';
+  red_card_prediction: 'none' | 'home' | 'away';
   points_earned: number;
 }
 
@@ -102,7 +103,8 @@ export function Predictions() {
     winner: 'home' | 'away' | 'draw', 
     homeScore: number, 
     awayScore: number, 
-    penalty: 'none' | 'home' | 'away'
+    penalty: 'none' | 'home' | 'away',
+    redCard: 'none' | 'home' | 'away'
   ) => {
     if (!userProfile?.id) return;
     setSavingId(matchId);
@@ -113,7 +115,8 @@ export function Predictions() {
         winner_prediction: winner,
         home_score: homeScore,
         away_score: awayScore,
-        penalty_prediction: penalty
+        penalty_prediction: penalty,
+        red_card_prediction: redCard
       };
 
       const { data, error } = await supabase
@@ -159,6 +162,8 @@ export function Predictions() {
             <span className="flex items-center gap-1"><Check className="w-4 h-4 text-emerald-500"/> النتيجة (3 نقاط)</span>
             <span className="text-neutral-300 dark:text-neutral-700">•</span>
             <span className="flex items-center gap-1"><AlertCircle className="w-4 h-4 text-emerald-500"/> ركلة الجزاء (1 نقطة)</span>
+            <span className="text-neutral-300 dark:text-neutral-700">•</span>
+            <span className="flex items-center gap-1"><AlertCircle className="w-4 h-4 text-red-500"/> بطاقة حمراء (1 نقطة)</span>
           </div>
         </div>
       </div>
@@ -196,12 +201,13 @@ function PredictionCard({
   match: Match, 
   prediction?: Prediction, 
   isSaving: boolean,
-  onSave: (winner: 'home' | 'away' | 'draw', home: number, away: number, penalty: 'none' | 'home' | 'away') => void 
+  onSave: (winner: 'home' | 'away' | 'draw', home: number, away: number, penalty: 'none' | 'home' | 'away', redCard: 'none' | 'home' | 'away') => void 
 }) {
   const [winner, setWinner] = useState<'home' | 'away' | 'draw' | ''>(prediction?.winner_prediction ?? '');
   const [homeScore, setHomeScore] = useState<number | ''>(prediction?.home_score ?? '');
   const [awayScore, setAwayScore] = useState<number | ''>(prediction?.away_score ?? '');
   const [penalty, setPenalty] = useState<'none' | 'home' | 'away'>(prediction?.penalty_prediction ?? 'none');
+  const [redCard, setRedCard] = useState<'none' | 'home' | 'away'>(prediction?.red_card_prediction ?? 'none');
 
   const [now, setNow] = useState(new Date());
 
@@ -408,13 +414,41 @@ function PredictionCard({
             </div>
           </div>
 
+          {/* Section 4: Red Card */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-neutral-100 dark:border-neutral-800 pb-2">
+              <h4 className="text-lg font-bold text-neutral-800 dark:text-neutral-200">توقع بطاقة حمراء</h4>
+              <span className="text-xs font-bold bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2 py-1 rounded-md">1 نقطة</span>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { id: 'none', label: 'لا توجد بطاقة حمراء' },
+                { id: 'home', label: `بطاقة حمراء لـ ${match.home_team}` },
+                { id: 'away', label: `بطاقة حمراء لـ ${match.away_team}` }
+              ].map(opt => (
+                <button
+                  key={opt.id}
+                  disabled={isLocked}
+                  onClick={() => setRedCard(opt.id as any)}
+                  className={`py-3 px-2 rounded-xl text-sm font-bold transition-all border-2
+                    ${redCard === opt.id 
+                      ? 'border-emerald-500 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' 
+                      : 'border-neutral-200 dark:border-neutral-700 hover:border-emerald-200 dark:hover:border-emerald-800 text-neutral-600 dark:text-neutral-400'
+                    } disabled:opacity-60 disabled:cursor-not-allowed`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
         </div>
 
         {/* Action Button */}
         {!prediction && (
           <div className="mt-10 flex justify-center border-t border-neutral-100 dark:border-neutral-800 pt-8">
             <button
-              onClick={() => winner && typeof homeScore === 'number' && typeof awayScore === 'number' && onSave(winner as any, homeScore, awayScore, penalty)}
+              onClick={() => winner && typeof homeScore === 'number' && typeof awayScore === 'number' && onSave(winner as any, homeScore, awayScore, penalty, redCard)}
               disabled={!canSave || isSaving}
               className={`px-10 py-4 rounded-2xl font-bold text-lg min-w-[250px] transition-all
                 ${canSave 

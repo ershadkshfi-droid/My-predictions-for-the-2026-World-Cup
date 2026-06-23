@@ -5,6 +5,7 @@ ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS played_predictions I
 ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS exact_scores INTEGER DEFAULT 0;
 ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS correct_winners INTEGER DEFAULT 0;
 ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS correct_penalties INTEGER DEFAULT 0;
+ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS correct_red_cards INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -18,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   exact_scores INTEGER DEFAULT 0,
   correct_winners INTEGER DEFAULT 0,
   correct_penalties INTEGER DEFAULT 0,
+  correct_red_cards INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -36,6 +38,7 @@ EXCEPTION WHEN duplicate_object THEN null; END $$;
 
 -- 2. Modify Matches Table
 ALTER TABLE IF EXISTS public.matches ADD COLUMN IF NOT EXISTS actual_penalty TEXT DEFAULT 'none';
+ALTER TABLE IF EXISTS public.matches ADD COLUMN IF NOT EXISTS actual_red_card TEXT DEFAULT 'none';
 ALTER TABLE IF EXISTS public.matches ADD COLUMN IF NOT EXISTS actual_winner TEXT DEFAULT 'draw';
 
 CREATE TABLE IF NOT EXISTS public.matches (
@@ -48,6 +51,7 @@ CREATE TABLE IF NOT EXISTS public.matches (
   home_score INTEGER,
   away_score INTEGER,
   actual_penalty TEXT DEFAULT 'none',
+  actual_red_card TEXT DEFAULT 'none',
   actual_winner TEXT DEFAULT 'draw',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -74,10 +78,13 @@ CREATE TABLE IF NOT EXISTS public.predictions (
   home_score INTEGER NOT NULL,
   away_score INTEGER NOT NULL,
   penalty_prediction TEXT NOT NULL,
+  red_card_prediction TEXT DEFAULT 'none',
   points_earned INTEGER DEFAULT 0,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, match_id)
 );
+
+ALTER TABLE IF EXISTS public.predictions ADD COLUMN IF NOT EXISTS red_card_prediction TEXT DEFAULT 'none';
 
 ALTER TABLE public.predictions ENABLE ROW LEVEL SECURITY;
 
@@ -141,14 +148,15 @@ DECLARE
   v_home_score INTEGER;
   v_away_score INTEGER;
   v_actual_penalty TEXT;
+  v_actual_red_card TEXT;
   v_actual_winner TEXT;
   v_status TEXT;
   v_match_result TEXT; -- 'home', 'away', 'draw'
   v_processed_count INTEGER;
 BEGIN
   -- Get match details
-  SELECT home_score, away_score, actual_penalty, actual_winner, status 
-  INTO v_home_score, v_away_score, v_actual_penalty, v_actual_winner, v_status
+  SELECT home_score, away_score, actual_penalty, actual_red_card, actual_winner, status 
+  INTO v_home_score, v_away_score, v_actual_penalty, v_actual_red_card, v_actual_winner, v_status
   FROM public.matches
   WHERE id = p_match_id;
 
@@ -183,6 +191,11 @@ BEGIN
         +
         CASE
           WHEN v_actual_penalty != 'none' AND penalty_prediction = v_actual_penalty THEN 1
+          ELSE 0
+        END
+        +
+        CASE
+          WHEN v_actual_red_card != 'none' AND red_card_prediction = v_actual_red_card THEN 1
           ELSE 0
         END
       )
@@ -229,6 +242,12 @@ BEGIN
         FROM public.predictions p
         JOIN public.matches m ON p.match_id = m.id
         WHERE p.user_id = u.id AND m.status = 'finished' AND m.actual_penalty != 'none' AND p.penalty_prediction = m.actual_penalty
+      ),
+      correct_red_cards = (
+        SELECT COUNT(p.id)
+        FROM public.predictions p
+        JOIN public.matches m ON p.match_id = m.id
+        WHERE p.user_id = u.id AND m.status = 'finished' AND m.actual_red_card != 'none' AND p.red_card_prediction = m.actual_red_card
       );
 
     -- Update ranks for all users 
@@ -244,7 +263,7 @@ BEGIN
 
     -- Insert evaluation log (حفظ السجلات)
     INSERT INTO public.evaluation_logs (match_id, predictions_processed, details)
-    VALUES (p_match_id, v_processed_count, 'Match evaluated successfully. Winner: ' || v_match_result || ', Score: ' || v_home_score || '-' || v_away_score || ', Penalty: ' || v_actual_penalty);
+    VALUES (p_match_id, v_processed_count, 'Match evaluated successfully. Winner: ' || v_match_result || ', Score: ' || v_home_score || '-' || v_away_score || ', Penalty: ' || v_actual_penalty || ', Red Card: ' || v_actual_red_card);
 
   END IF;
 END;
@@ -256,7 +275,7 @@ RETURNS trigger AS $$
 BEGIN
   -- Evaluate if match is set to finished OR if it is already finished and scores are updated
   IF (NEW.status = 'finished' AND OLD.status != 'finished') OR
-     (NEW.status = 'finished' AND (NEW.home_score IS DISTINCT FROM OLD.home_score OR NEW.away_score IS DISTINCT FROM OLD.away_score OR NEW.actual_penalty IS DISTINCT FROM OLD.actual_penalty OR NEW.actual_winner IS DISTINCT FROM OLD.actual_winner)) THEN
+     (NEW.status = 'finished' AND (NEW.home_score IS DISTINCT FROM OLD.home_score OR NEW.away_score IS DISTINCT FROM OLD.away_score OR NEW.actual_penalty IS DISTINCT FROM OLD.actual_penalty OR NEW.actual_red_card IS DISTINCT FROM OLD.actual_red_card OR NEW.actual_winner IS DISTINCT FROM OLD.actual_winner)) THEN
     PERFORM public.evaluate_match_predictions(NEW.id);
   END IF;
   RETURN NEW;

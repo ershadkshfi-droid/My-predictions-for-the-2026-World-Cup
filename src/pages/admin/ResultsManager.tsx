@@ -24,7 +24,7 @@ export function ResultsManager() {
     }
   };
 
-  const handleUpdateResult = async (matchId: string, homeScore: number, awayScore: number, actualPenalty: 'none'|'home'|'away', actualWinner: 'home'|'away'|'draw') => {
+  const handleUpdateResult = async (matchId: string, homeScore: number, awayScore: number, actualPenalty: 'none'|'home'|'away', actualRedCard: 'none'|'home'|'away', actualWinner: 'home'|'away'|'draw') => {
     if (homeScore < 0 || awayScore < 0) return toast.error("الرجاء إدخال أهداف صحيحة");
     if (!actualWinner) return toast.error("الرجاء اختيار الفائز أو حالة التعادل");
 
@@ -36,6 +36,7 @@ export function ResultsManager() {
             home_score: homeScore,
             away_score: awayScore,
             actual_penalty: actualPenalty,
+            actual_red_card: actualRedCard,
             actual_winner: actualWinner,
             status: 'finished'
           })
@@ -87,10 +88,11 @@ export function ResultsManager() {
   );
 }
 
-function ResultCard({ match, onSave }: { match: any, onSave: (id: string, h: number, a: number, p: string, w: 'home'|'away'|'draw') => void }) {
+function ResultCard({ match, onSave }: { match: any, onSave: (id: string, h: number, a: number, p: string, r: string, w: 'home'|'away'|'draw') => void }) {
   const [home, setHome] = useState<number | ''>(match.home_score ?? '');
   const [away, setAway] = useState<number | ''>(match.away_score ?? '');
   const [penalty, setPenalty] = useState<'none'|'home'|'away'>(match.actual_penalty ?? 'none');
+  const [redCard, setRedCard] = useState<'none'|'home'|'away'>(match.actual_red_card ?? 'none');
   const [winner, setWinner] = useState<'home'|'away'|'draw' | ''>(match.actual_winner ?? '');
 
   // Update winner automatically if scores change to help admin
@@ -150,9 +152,22 @@ function ResultCard({ match, onSave }: { match: any, onSave: (id: string, h: num
         </select>
       </div>
 
+      <div className="mb-6 space-y-2">
+        <p className="text-xs font-bold text-neutral-500">من حصل على بطاقة حمراء؟</p>
+        <select 
+          value={redCard} 
+          onChange={e => setRedCard(e.target.value as any)}
+          className="w-full bg-neutral-100 dark:bg-neutral-800 border-none rounded-xl text-sm font-bold px-4 py-2.5 outline-none focus:ring-2 focus:ring-emerald-500"
+        >
+          <option value="none">لا توجد بطاقة حمراء</option>
+          <option value="home">{match.home_team}</option>
+          <option value="away">{match.away_team}</option>
+        </select>
+      </div>
+
       <div className="mt-auto">
         <button 
-          onClick={() => typeof home === 'number' && typeof away === 'number' && winner !== '' && onSave(match.id, home, away, penalty, winner as 'home'|'away'|'draw')}
+          onClick={() => typeof home === 'number' && typeof away === 'number' && winner !== '' && onSave(match.id, home, away, penalty, redCard, winner as 'home'|'away'|'draw')}
           disabled={typeof home !== 'number' || typeof away !== 'number' || winner === ''}
           className="w-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all disabled:opacity-50"
         >
