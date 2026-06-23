@@ -244,6 +244,38 @@ export function MatchesManager() {
   };
 
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isConfirmingDeleteAll, setIsConfirmingDeleteAll] = useState(false);
+
+  const handleDeleteAll = async () => {
+    if (!isConfirmingDeleteAll) {
+      setIsConfirmingDeleteAll(true);
+      setTimeout(() => setIsConfirmingDeleteAll(false), 3000);
+      return;
+    }
+    
+    setIsConfirmingDeleteAll(false);
+    setLoading(true);
+    try {
+      const { data: allMatches } = await supabase.from('matches').select('id');
+      if (allMatches && allMatches.length > 0) {
+        const ids = allMatches.map(m => m.id);
+        const batchSize = 100;
+        for (let i = 0; i < ids.length; i += batchSize) {
+            const batch = ids.slice(i, i + batchSize);
+            await supabase.from('evaluation_logs').delete().in('match_id', batch);
+            await supabase.from('predictions').delete().in('match_id', batch);
+            await supabase.from('matches').delete().in('id', batch);
+        }
+      }
+      toast.success('تم حذف جميع المباريات بنجاح');
+      fetchMatches();
+    } catch (e) {
+      console.error(e);
+      toast.error('حدث خطأ أثناء الحذف');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleDelete = async (id: string) => {
     if (deleteConfirmId !== id) {
@@ -278,11 +310,18 @@ export function MatchesManager() {
         </div>
         <div className="flex gap-3">
           <button 
+            onClick={handleDeleteAll}
+            className={`${isConfirmingDeleteAll ? 'bg-red-600 hover:bg-red-700 text-white shadow-red-600/20' : 'bg-neutral-100 hover:bg-red-50 text-neutral-600 hover:text-red-600 dark:bg-neutral-800 dark:hover:bg-red-500/10 dark:text-neutral-400 dark:hover:text-red-400 shadow-sm'} px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95`}
+          >
+            <Trash2 className="w-5 h-5" />
+            {isConfirmingDeleteAll ? 'تأكيد الحذف النهائي؟' : 'حذف الجميع'}
+          </button>
+          <button 
             onClick={handleSeedWorldCup}
             className={`${isConfirmingSeed ? 'bg-amber-500 hover:bg-amber-600 text-white shadow-amber-500/20' : 'bg-neutral-800 hover:bg-neutral-900 dark:bg-neutral-100 dark:hover:bg-white text-white dark:text-neutral-900 shadow-neutral-500/10'} px-5 py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95`}
           >
             <Wand2 className="w-5 h-5" />
-            {isConfirmingSeed ? 'تأكيد التوليد (104 مباراة)؟' : 'توليد مباريات كأس العالم 2026'}
+            {isConfirmingSeed ? 'تأكيد التوليد (104 مباراة)؟' : 'توليد مباريات 2026'}
           </button>
           <button 
             onClick={() => handleOpenModal()}
