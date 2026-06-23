@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 import { Gamepad2, Save, CheckCircle } from 'lucide-react';
 
 export function ResultsManager() {
@@ -24,8 +25,8 @@ export function ResultsManager() {
   };
 
   const handleUpdateResult = async (matchId: string, homeScore: number, awayScore: number, actualPenalty: 'none'|'home'|'away', actualWinner: 'home'|'away'|'draw') => {
-    if (homeScore < 0 || awayScore < 0) return alert("الرجاء إدخال أهداف صحيحة");
-    if (!actualWinner) return alert("الرجاء اختيار الفائز أو حالة التعادل");
+    if (homeScore < 0 || awayScore < 0) return toast.error("الرجاء إدخال أهداف صحيحة");
+    if (!actualWinner) return toast.error("الرجاء اختيار الفائز أو حالة التعادل");
 
     if (confirm("هل أنت متأكد من حفظ النتيجة واعتمادها نهائياً؟ سيتم احتساب النقاط وترقية الترتيب لجميع المستخدمين.")) {
       try {
@@ -42,16 +43,16 @@ export function ResultsManager() {
 
         if (error) {
            if (error.message.includes("actual_winner")) {
-             alert('خطأ: يرجى تحديث قاعدة البيانات وتشغيل ملف supabase_schema.sql لإضافة عمود actual_winner');
+             toast.error('خطأ: يرجى تحديث قاعدة البيانات وتشغيل ملف supabase_schema.sql لإضافة عمود actual_winner');
              return;
            }
            throw error;
         }
-        alert("تم اعتماد النتيجة وتقييم التوقعات بنجاح!");
+        toast.success("تم اعتماد النتيجة وتقييم التوقعات بنجاح!");
         fetchMatches();
       } catch (err) {
         console.error(err);
-        alert("حدث خطأ أثناء حفظ النتيجة.");
+        toast.error("حدث خطأ أثناء حفظ النتيجة.");
       }
     }
   };

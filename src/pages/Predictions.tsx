@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { toast } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
 import { Check, Clock, AlertCircle, Trophy } from 'lucide-react';
 
@@ -127,7 +128,7 @@ export function Predictions() {
       }
     } catch (e) {
       console.error('Error saving prediction:', e);
-      alert('حدث خطأ أثناء حفظ التوقع. ربما تكون قد توقعت هذه المباراة مسبقاً.');
+      toast.error('حدث خطأ أثناء حفظ التوقع. ربما تكون قد توقعت هذه المباراة مسبقاً.');
     } finally {
       setSavingId(null);
     }

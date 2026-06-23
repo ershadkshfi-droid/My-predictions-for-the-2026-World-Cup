@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import { toast } from 'react-hot-toast';
 import { Swords, Plus, Edit2, Trash2, Calendar, X, Wand2 } from 'lucide-react';
 
 export function MatchesManager() {
@@ -169,11 +170,11 @@ export function MatchesManager() {
         if (error) throw error;
       }
 
-      alert(`تم توليد ${matchesToInsert.length} مباراة لكأس العالم 2026 بنجاح!`);
+      toast.success(`تم توليد ${matchesToInsert.length} مباراة لكأس العالم 2026 بنجاح!`);
       fetchMatches();
     } catch(e: any) {
       console.error(e);
-      alert('حدث خطأ أثناء التوليد، راجع وحدة التحكم');
+      toast.error('حدث خطأ أثناء التوليد، راجع وحدة التحكم');
     } finally {
       setLoading(false);
     }
@@ -227,7 +228,7 @@ export function MatchesManager() {
       fetchMatches();
     } catch (e) {
       console.error('Error saving match:', e);
-      alert('حدث خطأ أثناء حفظ المباراة');
+      toast.error('حدث خطأ أثناء حفظ المباراة');
     }
   };
 

@@ -25,9 +25,35 @@ export function Leaderboard() {
       }
     };
     fetchLeaderboard();
+
+    // إعداد التحديث المباشر للوحة المتصدرين (Real-time)
+    const channel = supabase.channel('public:users')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'users' }, () => {
+        fetchLeaderboard();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
-  if (loading) return <div className="p-10 text-center text-neutral-500">جاري التحميل...</div>;
+  if (loading) {
+    return (
+      <div className="max-w-5xl mx-auto space-y-12 pb-12 pt-8 animate-pulse">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-16 h-16 bg-neutral-200 dark:bg-neutral-800 rounded-3xl" />
+          <div className="w-64 h-10 bg-neutral-200 dark:bg-neutral-800 rounded-lg" />
+          <div className="w-96 h-6 bg-neutral-200 dark:bg-neutral-800 rounded-lg" />
+        </div>
+        <div className="max-w-4xl mx-auto mt-12 grid grid-cols-3 gap-8 px-4 items-end">
+          <div className="h-48 bg-neutral-200 dark:bg-neutral-800 rounded-t-2xl" />
+          <div className="h-64 bg-neutral-200 dark:bg-neutral-800 rounded-t-2xl" />
+          <div className="h-40 bg-neutral-200 dark:bg-neutral-800 rounded-t-2xl" />
+        </div>
+      </div>
+    );
+  }
 
   const top3 = users.slice(0, 3);
   const remainingUsers = users.slice(3);

@@ -180,8 +180,40 @@ function MyStats() {
     ]
   };
 
+  const handleShare = async () => {
+    const text = `توقعاتي في تحدي المونديال 2026 🏆\nالنقاط: ${stats.points}\nنسبة النجاح: %${stats.successRate}\nشارك وتوقع وأثبت مهارتك اليوم!`;
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'تحدي التوقعات',
+          text: text,
+          url: window.location.origin
+        });
+      } catch (err) {
+        console.error('Share failed', err);
+      }
+    } else {
+      navigator.clipboard.writeText(text + '\n' + window.location.origin);
+      alert('تم نسخ النص للمشاركة!');
+    }
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex items-center justify-between">
+        <h2 className="text-xl font-bold flex items-center gap-2">
+          <Activity className="w-5 h-5 text-neutral-500" />
+          نظرة عامة على أدائي
+        </h2>
+        <button 
+          onClick={handleShare}
+          className="flex items-center gap-2 px-4 py-2 bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-900 dark:text-white rounded-xl text-sm font-medium transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+          مشاركة إحصائياتي
+        </button>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <StatCard title="عدد التوقعات" value={stats.predictions} icon={Target} color="text-blue-500" bg="bg-blue-50 dark:bg-blue-500/10" />
         <StatCard title="عدد النجاحات" value={stats.successes} icon={CheckCircle2} color="text-emerald-500" bg="bg-emerald-50 dark:bg-emerald-500/10" />

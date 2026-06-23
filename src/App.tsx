@@ -3,22 +3,34 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
+import { Suspense, lazy } from 'react';
 import { ThemeProvider } from "./context/ThemeContext";
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Layout } from "./components/layout/Layout";
-import { Dashboard } from "./pages/Dashboard";
-import { Predictions } from "./pages/Predictions";
-import { Matches } from "./pages/Matches";
-import { GroupStandings } from "./pages/GroupStandings";
-import { Login } from "./pages/Login";
-import { Leaderboard } from "./pages/Leaderboard";
+import { Toaster } from "react-hot-toast";
 
+import { Layout } from "./components/layout/Layout";
 import { AdminLayout } from "./components/layout/AdminLayout";
-import { UsersManager } from "./pages/admin/UsersManager";
-import { MatchesManager } from "./pages/admin/MatchesManager";
-import { ResultsManager } from "./pages/admin/ResultsManager";
-import { SettingsManager } from "./pages/admin/SettingsManager";
+
+// Lazy-loaded pages (Performance: Code Splitting)
+const Login = lazy(() => import("./pages/Login").then(module => ({ default: module.Login })));
+const Dashboard = lazy(() => import("./pages/Dashboard").then(module => ({ default: module.Dashboard })));
+const Predictions = lazy(() => import("./pages/Predictions").then(module => ({ default: module.Predictions })));
+const Matches = lazy(() => import("./pages/Matches").then(module => ({ default: module.Matches })));
+const GroupStandings = lazy(() => import("./pages/GroupStandings").then(module => ({ default: module.GroupStandings })));
+const Leaderboard = lazy(() => import("./pages/Leaderboard").then(module => ({ default: module.Leaderboard })));
+
+// Admin Pages
+const UsersManager = lazy(() => import("./pages/admin/UsersManager").then(module => ({ default: module.UsersManager })));
+const MatchesManager = lazy(() => import("./pages/admin/MatchesManager").then(module => ({ default: module.MatchesManager })));
+const ResultsManager = lazy(() => import("./pages/admin/ResultsManager").then(module => ({ default: module.ResultsManager })));
+const SettingsManager = lazy(() => import("./pages/admin/SettingsManager").then(module => ({ default: module.SettingsManager })));
+
+const SuspenseFallback = () => (
+  <div className="min-h-[100dvh] bg-neutral-50 dark:bg-neutral-950 flex items-center justify-center">
+    <div className="w-10 h-10 border-4 border-emerald-500/20 border-t-emerald-500 rounded-full animate-spin"></div>
+  </div>
+);
 
 function ProtectedRoute({ children, requireAdmin = false }: { children: React.ReactNode, requireAdmin?: boolean }) {
   const { session, loading, userProfile } = useAuth();
@@ -44,8 +56,9 @@ function ProtectedRoute({ children, requireAdmin = false }: { children: React.Re
 
 function AppContent() {
   return (
-    <Routes>
-      <Route path="/login" element={<Login />} />
+    <Suspense fallback={<SuspenseFallback />}>
+      <Routes>
+        <Route path="/login" element={<Login />} />
       
       <Route path="/" element={
         <ProtectedRoute>
@@ -99,9 +112,10 @@ function AppContent() {
         <Route path="settings" element={<SettingsManager />} />
       </Route>
       
-      {/* Catch all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Catch all */}
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Suspense>
   );
 }
 
@@ -111,6 +125,7 @@ export default function App() {
       <AuthProvider>
         <BrowserRouter>
           <AppContent />
+          <Toaster position="top-center" toastOptions={{ duration: 4000, style: { background: '#333', color: '#fff', fontSize: '14px' } }} />
         </BrowserRouter>
       </AuthProvider>
     </ThemeProvider>
