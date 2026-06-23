@@ -42,6 +42,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
             <NavLink 
               key={idx}
               to={item.href}
+              onClick={onClose}
               className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 group relative overflow-hidden ${isActive ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-bold' : 'text-neutral-600 dark:text-neutral-400 hover:bg-neutral-50 dark:hover:bg-neutral-900/80 font-medium'}`}
             >
               {({ isActive }) => (
@@ -61,6 +62,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean, onClose: () => v
             <div className="pt-6 mt-6 border-t border-neutral-200 dark:border-neutral-800">
                <NavLink 
                  to="/admin"
+                 onClick={onClose}
                  className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-500/10 font-bold`}
                >
                  <ShieldAlert className="w-5 h-5" />

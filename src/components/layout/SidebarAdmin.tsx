@@ -37,6 +37,7 @@ export function SidebarAdmin({ isOpen, onClose }: { isOpen: boolean, onClose: ()
             <NavLink 
               key={idx}
               to={item.href}
+              onClick={onClose}
               className={({ isActive }) => `flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 group relative overflow-hidden ${isActive ? 'bg-rose-500/10 text-rose-400 font-bold' : 'text-neutral-400 hover:bg-neutral-800 font-medium hover:text-white'}`}
             >
               {({ isActive }) => (
@@ -55,6 +56,7 @@ export function SidebarAdmin({ isOpen, onClose }: { isOpen: boolean, onClose: ()
           <div className="pt-8 mt-8 border-t border-neutral-800">
              <NavLink 
                to="/"
+               onClick={onClose}
                className="flex items-center gap-4 px-4 py-3.5 rounded-2xl transition-all duration-200 text-neutral-400 hover:bg-neutral-800 font-medium hover:text-white"
              >
                العودة للمنصة

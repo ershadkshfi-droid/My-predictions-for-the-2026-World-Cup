@@ -39,7 +39,7 @@ export function MatchesManager() {
   const handleSeedWorldCup = async () => {
     if (!isConfirmingSeed) {
       setIsConfirmingSeed(true);
-      setTimeout(() => setIsConfirmingSeed(false), 3000); // Reset after 3 seconds
+      setTimeout(() => setIsConfirmingSeed(false), 3000);
       return;
     }
     
@@ -47,7 +47,7 @@ export function MatchesManager() {
     setLoading(true);
 
     try {
-      // First, clear all existing matches to generate a pristine tournament bracket
+      // First, clear all existing matches
       const { data: allMatches } = await supabase.from('matches').select('id');
       if (allMatches && allMatches.length > 0) {
         const ids = allMatches.map(m => m.id);
@@ -60,110 +60,121 @@ export function MatchesManager() {
         }
       }
 
-      // World Cup 2026 has 12 groups (A to L)
-      const worldCupGroups: Record<string, string[]> = {
-        'A': ['المكسيك', 'نيجيريا', 'صربيا', 'نيوزيلندا'],
-        'B': ['كندا', 'سويسرا', 'الكاميرون', 'اليابان'],
-        'C': ['الأرجنتين', 'إسبانيا', 'أستراليا', 'تونس'],
-        'D': ['أمريكا', 'كرواتيا', 'السنغال', 'بيرو'],
-        'E': ['البرازيل', 'هولندا', 'السعودية', 'جنوب أفريقيا'],
-        'F': ['فرنسا', 'الأوروغواي', 'كوريا الجنوبية', 'مالي'],
-        'G': ['إنجلترا', 'كولومبيا', 'إيران', 'جامايكا'],
-        'H': ['بلجيكا', 'الإكوادور', 'المغرب', 'كوستاريكا'],
-        'I': ['البرتغال', 'الجزائر', 'ويلز', 'بنما'],
-        'J': ['إيطاليا', 'تشيلي', 'عمان', 'أوزبكستان'],
-        'K': ['ألمانيا', 'بولندا', 'مصر', 'هندوراس'],
-        'L': ['الدنمارك', 'السويد', 'قطر', 'العراق']
+      const matchesToInsert: any[] = [];
+      let matchNumber = 1;
+
+      const addMatch = (dateStr: string, timeKSAStr: string, groupOrStage: string, t1: string, t2: string) => {
+        const [h, m] = timeKSAStr.split(':');
+        let utcHour = parseInt(h) - 3;
+        let dateObj = new Date(dateStr);
+        if (utcHour < 0) {
+          utcHour += 24;
+          dateObj.setDate(dateObj.getDate() - 1);
+        }
+        dateObj.setUTCHours(utcHour, parseInt(m), 0, 0);
+        
+        matchesToInsert.push({
+          stage: groupOrStage,
+          home_team: t1,
+          away_team: t2,
+          match_date: dateObj.toISOString(),
+          status: 'scheduled'
+        });
       };
 
-      const groups = ['A','B','C','D','E','F','G','H','I','J','K','L'];
-      const matchesToInsert = [];
-      
-      // Group Stage: June 11 - June 27, 2026
-      // Saudi time is UTC+3. Time slots (local NA times vs KSA times).
-      // Assuming slots at: 15:00 UTC (18:00 KSA), 18:00 UTC (21:00 KSA), 21:00 UTC (00:00 KSA), 00:00 UTC (03:00 KSA)
-      const timeSlots = ['15:00:00Z', '18:00:00Z', '21:00:00Z', '00:00:00Z'];
-      
-      let baseDate = new Date('2026-06-11');
-      let matchCount = 0;
-
-      for (const g of groups) {
-        const teams = worldCupGroups[g];
-        const [t1, t2, t3, t4] = teams;
-        
-        // Matchday 1
-        matchesToInsert.push({ stage: `المجموعة ${g} - الجولة 1`, home_team: t1, away_team: t2, match_date: new Date(`${baseDate.toISOString().split('T')[0]}T${timeSlots[0]}`).toISOString(), status: 'scheduled' });
-        matchesToInsert.push({ stage: `المجموعة ${g} - الجولة 1`, home_team: t3, away_team: t4, match_date: new Date(`${baseDate.toISOString().split('T')[0]}T${timeSlots[1]}`).toISOString(), status: 'scheduled' });
-        
-        // Matchday 2 (approx 4-5 days later)
-        let md2Date = new Date(baseDate);
-        md2Date.setDate(md2Date.getDate() + 5);
-        matchesToInsert.push({ stage: `المجموعة ${g} - الجولة 2`, home_team: t1, away_team: t3, match_date: new Date(`${md2Date.toISOString().split('T')[0]}T${timeSlots[2]}`).toISOString(), status: 'scheduled' });
-        matchesToInsert.push({ stage: `المجموعة ${g} - الجولة 2`, home_team: t4, away_team: t2, match_date: new Date(`${md2Date.toISOString().split('T')[0]}T${timeSlots[3]}`).toISOString(), status: 'scheduled' });
-        
-        // Matchday 3 (approx 9-10 days later)
-        let md3Date = new Date(baseDate);
-        md3Date.setDate(md3Date.getDate() + 10);
-        matchesToInsert.push({ stage: `المجموعة ${g} - الجولة 3`, home_team: t4, away_team: t1, match_date: new Date(`${md3Date.toISOString().split('T')[0]}T${timeSlots[0]}`).toISOString(), status: 'scheduled' });
-        matchesToInsert.push({ stage: `المجموعة ${g} - الجولة 3`, home_team: t2, away_team: t3, match_date: new Date(`${md3Date.toISOString().split('T')[0]}T${timeSlots[0]}`).toISOString(), status: 'scheduled' });
-        
-        // advance base date by 1 for next group's schedule staggered
-        baseDate.setDate(baseDate.getDate() + 1);
-        matchCount += 6;
-      }
-
-      // Round of 32 (16 Matches) - June 28 - July 3
-      let r32Matches = [
-        { d: '2026-06-28', t: '20:00:00Z', h: 'وصيف المجموعة A', a: 'وصيف المجموعة B' },
-        { d: '2026-06-28', t: '23:00:00Z', h: 'بطل المجموعة A', a: 'أفضل ثالث' },
-        { d: '2026-06-29', t: '02:00:00Z', h: 'بطل المجموعة E', a: 'أفضل ثالث' },
-        { d: '2026-06-29', t: '05:00:00Z', h: 'بطل المجموعة F', a: 'وصيف المجموعة C' },
-        { d: '2026-06-29', t: '23:00:00Z', h: 'بطل المجموعة C', a: 'أفضل ثالث' },
-        { d: '2026-06-30', t: '02:00:00Z', h: 'بطل المجموعة I', a: 'أفضل ثالث' },
-        { d: '2026-06-30', t: '20:00:00Z', h: 'وصيف المجموعة E', a: 'وصيف المجموعة F' },
-        { d: '2026-06-30', t: '23:00:00Z', h: 'وصيف المجموعة I', a: 'وصيف المجموعة J' },
-        { d: '2026-07-01', t: '02:00:00Z', h: 'بطل المجموعة J', a: 'وصيف المجموعة H' },
-        { d: '2026-07-01', t: '05:00:00Z', h: 'بطل المجموعة D', a: 'أفضل ثالث' },
-        { d: '2026-07-01', t: '23:00:00Z', h: 'بطل المجموعة B', a: 'أفضل ثالث' },
-        { d: '2026-07-02', t: '02:00:00Z', h: 'بطل المجموعة G', a: 'أفضل ثالث' },
-        { d: '2026-07-02', t: '20:00:00Z', h: 'وصيف المجموعة C', a: 'وصيف المجموعة D' },
-        { d: '2026-07-02', t: '23:00:00Z', h: 'بطل المجموعة H', a: 'وصيف المجموعة J' },
-        { d: '2026-07-03', t: '02:00:00Z', h: 'بطل المجموعة K', a: 'أفضل ثالث' },
-        { d: '2026-07-03', t: '05:00:00Z', h: 'بطل المجموعة L', a: 'وصيف المجموعة K' }
+      const dates = [
+        '2026-06-11', '2026-06-12', '2026-06-13', '2026-06-14', '2026-06-15', '2026-06-16',
+        '2026-06-17', '2026-06-18', '2026-06-19', '2026-06-20', '2026-06-21', '2026-06-22',
+        '2026-06-23', '2026-06-24', '2026-06-25', '2026-06-26', '2026-06-27'
       ];
+      
+      const timeSlots = ["20:00", "23:00", "02:00", "05:00"];
+      const groupsList = ["A","B","C","D","E","F","G","H","I","J","K","L"];
+      
+      const groupMatches: Record<string, any[]> = {};
+      groupsList.forEach(g => {
+        const topSeed = g === 'A' ? 'المكسيك' : g === 'B' ? 'كندا' : g === 'D' ? 'أمريكا' : `${g}1`;
+        groupMatches[g] = [
+          {h: topSeed, a: `${g}2`},
+          {h: `${g}3`, a: `${g}4`},
+          {h: topSeed, a: `${g}3`},
+          {h: `${g}4`, a: `${g}2`},
+          {h: `${g}4`, a: topSeed},
+          {h: `${g}2`, a: `${g}3`}
+        ];
+      });
 
-      for (let i = 0; i < r32Matches.length; i++) {
-        let m = r32Matches[i];
-        // Time is stored as UTC. Here we assume the provided times map to the actual KSA evening/night watch times
-        // Example: 20:00:00Z -> 23:00 KSA.
-        matchesToInsert.push({ stage: 'دور الـ 32', home_team: m.h, away_team: m.a, match_date: new Date(`${m.d}T${m.t}`).toISOString(), status: 'scheduled' });
+      // Special Match 1 to 8 assignment based on dates
+      addMatch('2026-06-11', '23:00', 'المجموعة A - الجولة 1', 'المكسيك', 'A2');
+      addMatch('2026-06-11', '05:00', 'المجموعة A - الجولة 1', 'A3', 'A4');
+      addMatch('2026-06-12', '02:00', 'المجموعة B - الجولة 1', 'كندا', 'B2');
+      addMatch('2026-06-12', '05:00', 'المجموعة D - الجولة 1', 'أمريكا', 'D2');
+      addMatch('2026-06-13', '20:00', 'المجموعة C - الجولة 1', 'C1', 'C2');
+      addMatch('2026-06-13', '23:00', 'المجموعة C - الجولة 1', 'C3', 'C4');
+      addMatch('2026-06-13', '02:00', 'المجموعة B - الجولة 1', 'B3', 'B4');
+      addMatch('2026-06-13', '05:00', 'المجموعة D - الجولة 1', 'D3', 'D4');
+
+      let remainingGroupMatches: any[] = [];
+      groupsList.forEach(g => {
+        const mArr = [...groupMatches[g]];
+        if(g==='A' || g==='B' || g==='C' || g==='D') {
+          mArr.shift(); mArr.shift(); // Remove the first two matches for A, B, C, D (already handled)
+        }
+        mArr.forEach((ma, idx) => {
+          const round = Math.floor((idx + (g==='A'||g==='B'||g==='C'||g==='D'?2:0)) / 2) + 1;
+          remainingGroupMatches.push({ g, round, ...ma });
+        });
+      });
+
+      let dayIdx = 3; // Start from 2026-06-14
+      let slotIdx = 0;
+      remainingGroupMatches.forEach(rm => {
+        addMatch(dates[dayIdx], timeSlots[slotIdx], `المجموعة ${rm.g} - الجولة ${rm.round}`, rm.h, rm.a);
+        slotIdx++;
+        if(slotIdx >= 4) {
+          slotIdx = 0;
+          dayIdx++;
+        }
+      });
+
+      // Round of 32 (16 Matches)
+      const r32Dates = ['2026-06-28', '2026-06-29', '2026-06-30', '2026-07-01', '2026-07-02', '2026-07-03'];
+      let idR32 = 1;
+      for(let d of r32Dates) {
+        let games = (d === '2026-06-28' || d === '2026-07-03') ? 2 : 3;
+        for(let i=0; i<games; i++) {
+          addMatch(d, timeSlots[Math.floor(Math.random()*4)], 'دور الـ 32', `المركز الأول أو الثاني`, `المركز الثاني أو أفضل ثالث`);
+          idR32++;
+        }
       }
 
-      // Round of 16 (8 Matches) - July 4 - July 7
-      let r16Date = new Date('2026-07-04');
-      for (let i = 1; i <= 8; i++) {
-        matchesToInsert.push({ stage: 'دور الـ 16', home_team: `الفائز من دور 32 رقم ${i*2-1}`, away_team: `الفائز من دور 32 رقم ${i*2}`, match_date: new Date(`${r16Date.toISOString().split('T')[0]}T${timeSlots[(i%2)+1]}`).toISOString(), status: 'scheduled' });
-        if (i % 2 === 0) r16Date.setDate(r16Date.getDate() + 1);
+      // Round of 16 (8 Matches)
+      const r16Dates = ['2026-07-04', '2026-07-05', '2026-07-06', '2026-07-07'];
+      let idR16 = 1;
+      for(let d of r16Dates) {
+        for(let i=0; i<2; i++) {
+          addMatch(d, i===0?'23:00':'02:00', 'دور الـ 16', `فائز دور 32 رقم ${idR16*2-1}`, `فائز دور 32 رقم ${idR16*2}`);
+          idR16++;
+        }
       }
 
-      // Quarter-finals (4 Matches) - July 9 - July 11
-      let qfDate = new Date('2026-07-09');
-      for (let i = 1; i <= 4; i++) {
-        matchesToInsert.push({ stage: 'ربع النهائي', home_team: `الفائز من دور 16 رقم ${i*2-1}`, away_team: `الفائز من دور 16 رقم ${i*2}`, match_date: new Date(`${qfDate.toISOString().split('T')[0]}T${timeSlots[1]}`).toISOString(), status: 'scheduled' });
-        if (i % 2 === 0) qfDate.setDate(qfDate.getDate() + 1);
-      }
+      // Quarter Finals (4 Matches)
+      addMatch('2026-07-09', '02:00', 'ربع النهائي', 'فائز دور 16 رقم 1', 'فائز دور 16 رقم 2');
+      addMatch('2026-07-10', '23:00', 'ربع النهائي', 'فائز دور 16 رقم 3', 'فائز دور 16 رقم 4');
+      addMatch('2026-07-10', '02:00', 'ربع النهائي', 'فائز دور 16 رقم 5', 'فائز دور 16 رقم 6');
+      addMatch('2026-07-11', '02:00', 'ربع النهائي', 'فائز دور 16 رقم 7', 'فائز دور 16 رقم 8');
 
-      // Semi-finals (2 Matches) - July 14 - July 15
-      matchesToInsert.push({ stage: 'نصف النهائي', home_team: `الفائز ربع النهائي 1`, away_team: `الفائز ربع النهائي 2`, match_date: new Date(`2026-07-14T19:00:00Z`).toISOString(), status: 'scheduled' });
-      matchesToInsert.push({ stage: 'نصف النهائي', home_team: `الفائز ربع النهائي 3`, away_team: `الفائز ربع النهائي 4`, match_date: new Date(`2026-07-15T19:00:00Z`).toISOString(), status: 'scheduled' });
+      // Semi-finals (2 Matches)
+      addMatch('2026-07-14', '02:00', 'نصف النهائي', 'فائز ربع النهائي 1', 'فائز ربع النهائي 2');
+      addMatch('2026-07-15', '02:00', 'نصف النهائي', 'فائز ربع النهائي 3', 'فائز ربع النهائي 4');
 
-      // Third Place (1 Match) - July 18
-      matchesToInsert.push({ stage: 'تحديد المركز الثالث', home_team: `الخاسر نصف النهائي 1`, away_team: `الخاسر نصف النهائي 2`, match_date: new Date(`2026-07-18T19:00:00Z`).toISOString(), status: 'scheduled' });
+      // Third Place (1 Match)
+      addMatch('2026-07-18', '23:00', 'تحديد المركز الثالث', 'خاسر نصف النهائي 1', 'خاسر نصف النهائي 2');
 
-      // Final (1 Match) - July 19
-      matchesToInsert.push({ stage: 'النهائي', home_team: `الفائز نصف النهائي 1`, away_team: `الفائز نصف النهائي 2`, match_date: new Date(`2026-07-19T19:00:00Z`).toISOString(), status: 'scheduled' });
+      // Final (1 Match)
+      addMatch('2026-07-19', '23:00', 'النهائي', 'فائز نصف النهائي 1', 'فائز نصف النهائي 2');
 
-      // Insert all matches in chunks of 50 to avoid big payload limit
+      // Insert all calculated 104 matches in chunks
       for (let i = 0; i < matchesToInsert.length; i += 50) {
         const batch = matchesToInsert.slice(i, i + 50);
         const { error } = await supabase.from('matches').insert(batch);
