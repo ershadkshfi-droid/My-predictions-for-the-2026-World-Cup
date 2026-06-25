@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Trophy, Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle, Globe } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -6,7 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 
 export function Login() {
-  const { session, userProfile, loading: authLoading } = useAuth();
+  const { session, userProfile, loading: authLoading, reloadProfile } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [username, setUsername] = useState('');
@@ -16,6 +16,21 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [allowNewRegistrations, setAllowNewRegistrations] = useState(true);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase.from('settings').select('allow_new_registrations').eq('id', 1).single();
+        if (data && !error) {
+          setAllowNewRegistrations(data.allow_new_registrations);
+        }
+      } catch (err) {
+        console.error('Error fetching settings:', err);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   if (authLoading) {
     return (
@@ -40,6 +55,12 @@ export function Login() {
     // التحقق المبدئي
     if (!email || !password || (!isLogin && !username)) {
       setError('يرجى تعبئة جميع الحقول المطلوبة.');
+      setLoading(false);
+      return;
+    }
+
+    if (!isLogin && !allowNewRegistrations) {
+      setError('عذراً، التسجيل موقوف حالياً من قبل الإدارة.');
       setLoading(false);
       return;
     }
@@ -90,6 +111,8 @@ export function Login() {
             .insert([{ id: data.user.id, email: email, username: username, avatar_url: avatarUrl, role: 'user' }]);
             
             // Ignore duplicate key error in case trigger did it
+
+          await reloadProfile();
         }
 
         setError('تم إنشاء الحساب بنجاح! جاري تحويلك...');
@@ -326,18 +349,39 @@ export function Login() {
 
           {/* تبديل الوضع */}
           <div className="mt-8 pt-8 border-t border-neutral-200 dark:border-neutral-800 text-center">
-            <p className="text-neutral-500 dark:text-neutral-400 font-medium">
-              {isLogin ? 'ليس لديك حساب بعد؟' : 'لديك حساب بالفعل؟'}{' '}
-              <button
-                onClick={() => {
-                  setIsLogin(!isLogin);
-                  setError(null);
-                }}
-                className="text-emerald-600 dark:text-emerald-400 font-bold hover:text-emerald-700 hover:underline underline-offset-4 transition-all"
-              >
-                {isLogin ? 'سجل معنا الآن' : 'تسجيل الدخول'}
-              </button>
-            </p>
+            {isLogin ? (
+              allowNewRegistrations ? (
+                <p className="text-neutral-500 dark:text-neutral-400 font-medium">
+                  ليس لديك حساب بعد؟{' '}
+                  <button
+                    onClick={() => {
+                      setIsLogin(false);
+                      setError(null);
+                    }}
+                    className="text-emerald-600 dark:text-emerald-400 font-bold hover:text-emerald-700 hover:underline underline-offset-4 transition-all"
+                  >
+                    سجل معنا الآن
+                  </button>
+                </p>
+              ) : (
+                <p className="text-neutral-500 dark:text-neutral-400 font-medium">
+                  تسجيل الحسابات الجديدة موقوف حالياً.
+                </p>
+              )
+            ) : (
+              <p className="text-neutral-500 dark:text-neutral-400 font-medium">
+                لديك حساب بالفعل؟{' '}
+                <button
+                  onClick={() => {
+                    setIsLogin(true);
+                    setError(null);
+                  }}
+                  className="text-emerald-600 dark:text-emerald-400 font-bold hover:text-emerald-700 hover:underline underline-offset-4 transition-all"
+                >
+                  تسجيل الدخول
+                </button>
+              </p>
+            )}
           </div>
 
         </motion.div>
