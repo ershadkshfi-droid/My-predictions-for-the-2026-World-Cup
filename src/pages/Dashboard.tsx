@@ -88,35 +88,39 @@ function MyStats() {
         const { data: myPredictions, error } = await supabase
           .from('predictions')
           .select('*, matches!inner(*)')
-          .eq('user_id', userProfile.id)
-          .eq('matches.status', 'finished');
+          .eq('user_id', userProfile.id);
 
         if (error) throw error;
 
+        let totalPredictions = myPredictions?.length || 0;
         let successes = 0;
         let failures = 0;
         let points = 0;
         let timeline: any[] = [];
 
         myPredictions?.forEach(p => {
-          points += p.points_earned;
-          if (p.points_earned > 0) {
-            successes++;
-          } else {
-            failures++;
+          // Only evaluate stats for finished matches
+          if (p.matches.status === 'finished') {
+            points += p.points_earned;
+            // A prediction is a success if they earned points
+            if (p.points_earned > 0) {
+              successes++;
+            } else {
+              failures++;
+            }
+            
+            timeline.push({
+              date: new Date(p.created_at).toLocaleDateString('ar-SA'),
+              points: p.points_earned
+            });
           }
-          
-          timeline.push({
-            date: new Date(p.created_at).toLocaleDateString('ar-SA'),
-            points: p.points_earned
-          });
         });
 
-        const total = successes + failures;
-        const rate = total > 0 ? Math.round((successes / total) * 100) : 0;
+        const evaluatedTotal = successes + failures;
+        const rate = evaluatedTotal > 0 ? Math.round((successes / evaluatedTotal) * 100) : 0;
 
         setStats({
-          predictions: total,
+          predictions: totalPredictions,
           successes,
           failures,
           points,

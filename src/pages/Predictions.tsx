@@ -182,7 +182,7 @@ export function Predictions() {
                 match={match} 
                 prediction={prediction} 
                 isSaving={savingId === match.id}
-                onSave={(w, h, a, p) => handlePredict(match.id, w, h, a, p)}
+                onSave={(w, h, a, p, r) => handlePredict(match.id, w, h, a, p, r)}
               />
             );
           })}

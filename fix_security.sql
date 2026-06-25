@@ -2,6 +2,17 @@
 -- الإصلاحات الأمنية الشاملة لبيئة Supabase
 -- ==========================================
 
+-- 0. إنشاء دالة التحقق من المدير
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN AS $$
+DECLARE
+  user_role VARCHAR(20);
+BEGIN
+  SELECT role INTO user_role FROM public.users WHERE id = auth.uid();
+  RETURN coalesce(user_role = 'admin', false);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- 1. حماية حقول المستخدم من التعديل العشوائي وتصعيد الصلاحيات (نظام تسجيل النقاط والصلاحيات)
 CREATE OR REPLACE FUNCTION public.protect_user_fields()
 RETURNS trigger AS $$

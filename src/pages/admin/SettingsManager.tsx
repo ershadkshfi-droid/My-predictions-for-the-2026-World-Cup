@@ -12,7 +12,8 @@ export function SettingsManager() {
     correct_winner_points: 2,
     correct_score_points: 3,
     correct_penalty_points: 1,
-    max_points_per_match: 6,
+    correct_red_card_points: 1,
+    max_points_per_match: 7,
     allow_new_registrations: true,
     auto_close_predictions: true,
   });
@@ -37,7 +38,8 @@ export function SettingsManager() {
           correct_winner_points: data.correct_winner_points ?? 2,
           correct_score_points: data.correct_score_points ?? 3,
           correct_penalty_points: data.correct_penalty_points ?? 1,
-          max_points_per_match: data.max_points_per_match ?? 6,
+          correct_red_card_points: data.correct_red_card_points ?? 1,
+          max_points_per_match: data.max_points_per_match ?? 7,
           allow_new_registrations: data.allow_new_registrations ?? true,
           auto_close_predictions: data.auto_close_predictions ?? true,
         });
@@ -140,6 +142,17 @@ export function SettingsManager() {
                 type="number" 
                 value={settings.correct_penalty_points} 
                 onChange={(e) => setSettings({...settings, correct_penalty_points: parseInt(e.target.value) || 0})}
+                className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-500/50 border border-transparent font-medium text-left" 
+                dir="ltr" 
+              />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300">البطاقة الحمراء الصحيحة</label>
+              <input 
+                type="number" 
+                value={settings.correct_red_card_points} 
+                onChange={(e) => setSettings({...settings, correct_red_card_points: parseInt(e.target.value) || 0})}
                 className="w-full bg-neutral-100 dark:bg-neutral-800 text-neutral-900 dark:text-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-rose-500/50 border border-transparent font-medium text-left" 
                 dir="ltr" 
               />

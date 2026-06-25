@@ -140,6 +140,36 @@ CREATE TRIGGER on_auth_user_created
   FOR EACH ROW EXECUTE PROCEDURE public.handle_new_user();
 
 
+-- 5.5 Create Settings Table
+CREATE TABLE IF NOT EXISTS public.settings (
+  id INTEGER PRIMARY KEY,
+  correct_winner_points INTEGER DEFAULT 2,
+  correct_score_points INTEGER DEFAULT 3,
+  correct_penalty_points INTEGER DEFAULT 1,
+  correct_red_card_points INTEGER DEFAULT 1,
+  max_points_per_match INTEGER DEFAULT 7,
+  allow_new_registrations BOOLEAN DEFAULT true,
+  auto_close_predictions BOOLEAN DEFAULT true,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE public.settings ENABLE ROW LEVEL SECURITY;
+
+DO $$ BEGIN
+  CREATE POLICY "Anyone can read settings" ON public.settings FOR SELECT USING (true);
+  CREATE POLICY "Only admins can update settings" ON public.settings FOR UPDATE USING (
+    EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+  CREATE POLICY "Only admins can insert settings" ON public.settings FOR INSERT WITH CHECK (
+    EXISTS (SELECT 1 FROM public.users WHERE users.id = auth.uid() AND users.role = 'admin')
+  );
+EXCEPTION WHEN duplicate_object THEN null; END $$;
+
+-- Insert default settings if not exists
+INSERT INTO public.settings (id, correct_winner_points, correct_score_points, correct_penalty_points, correct_red_card_points, max_points_per_match, allow_new_registrations, auto_close_predictions)
+VALUES (1, 2, 3, 1, 1, 7, true, true)
+ON CONFLICT (id) DO NOTHING;
+
 -- 6. Prediction Evaluation Engine
 
 CREATE OR REPLACE FUNCTION public.evaluate_match_predictions(p_match_id UUID)
@@ -153,6 +183,13 @@ DECLARE
   v_status TEXT;
   v_match_result TEXT; -- 'home', 'away', 'draw'
   v_processed_count INTEGER;
+  
+  -- Settings variables
+  v_pts_winner INTEGER;
+  v_pts_score INTEGER;
+  v_pts_penalty INTEGER;
+  v_pts_red_card INTEGER;
+  v_pts_max INTEGER;
 BEGIN
   -- Get match details
   SELECT home_score, away_score, actual_penalty, actual_red_card, actual_winner, status 
@@ -163,6 +200,16 @@ BEGIN
   -- Only evaluate if match is finished and scores are set
   IF v_status = 'finished' AND v_home_score IS NOT NULL AND v_away_score IS NOT NULL THEN
     
+    -- Load settings
+    SELECT correct_winner_points, correct_score_points, correct_penalty_points, correct_red_card_points, max_points_per_match
+    INTO v_pts_winner, v_pts_score, v_pts_penalty, v_pts_red_card, v_pts_max
+    FROM public.settings
+    WHERE id = 1;
+    
+    IF v_pts_winner IS NULL THEN
+      v_pts_winner := 2; v_pts_score := 3; v_pts_penalty := 1; v_pts_red_card := 1; v_pts_max := 7;
+    END IF;
+
     -- Determine actual match result
     IF v_actual_winner IS NOT NULL AND v_actual_winner != '' THEN
       v_match_result := v_actual_winner;
@@ -175,29 +222,31 @@ BEGIN
     END IF;
 
     -- Update predictions for this match 
-    -- Points: 3 for exact score, 2 for exactly correct winner_prediction, 1 for correct penalty_prediction (if actual != 'none')
     WITH updated_predictions AS (
       UPDATE public.predictions
-      SET points_earned = (
-        CASE
-          WHEN home_score = v_home_score AND away_score = v_away_score THEN 3
-          ELSE 0
-        END
-        +
-        CASE
-          WHEN winner_prediction = v_match_result THEN 2
-          ELSE 0
-        END
-        +
-        CASE
-          WHEN v_actual_penalty != 'none' AND penalty_prediction = v_actual_penalty THEN 1
-          ELSE 0
-        END
-        +
-        CASE
-          WHEN v_actual_red_card != 'none' AND red_card_prediction = v_actual_red_card THEN 1
-          ELSE 0
-        END
+      SET points_earned = LEAST(
+        v_pts_max,
+        (
+          CASE
+            WHEN home_score = v_home_score AND away_score = v_away_score THEN v_pts_score
+            ELSE 0
+          END
+          +
+          CASE
+            WHEN winner_prediction = v_match_result THEN v_pts_winner
+            ELSE 0
+          END
+          +
+          CASE
+            WHEN v_actual_penalty != 'none' AND penalty_prediction = v_actual_penalty THEN v_pts_penalty
+            ELSE 0
+          END
+          +
+          CASE
+            WHEN v_actual_red_card != 'none' AND red_card_prediction = v_actual_red_card THEN v_pts_red_card
+            ELSE 0
+          END
+        )
       )
       WHERE match_id = p_match_id
       RETURNING id

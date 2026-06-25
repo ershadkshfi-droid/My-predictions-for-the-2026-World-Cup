@@ -28,33 +28,31 @@ export function ResultsManager() {
     if (homeScore < 0 || awayScore < 0) return toast.error("الرجاء إدخال أهداف صحيحة");
     if (!actualWinner) return toast.error("الرجاء اختيار الفائز أو حالة التعادل");
 
-    if (confirm("هل أنت متأكد من حفظ النتيجة واعتمادها نهائياً؟ سيتم احتساب النقاط وترقية الترتيب لجميع المستخدمين.")) {
-      try {
-        const { error } = await supabase
-          .from('matches')
-          .update({
-            home_score: homeScore,
-            away_score: awayScore,
-            actual_penalty: actualPenalty,
-            actual_red_card: actualRedCard,
-            actual_winner: actualWinner,
-            status: 'finished'
-          })
-          .eq('id', matchId);
+    try {
+      const { error } = await supabase
+        .from('matches')
+        .update({
+          home_score: homeScore,
+          away_score: awayScore,
+          actual_penalty: actualPenalty,
+          actual_red_card: actualRedCard,
+          actual_winner: actualWinner,
+          status: 'finished'
+        })
+        .eq('id', matchId);
 
-        if (error) {
-           if (error.message.includes("actual_winner")) {
-             toast.error('خطأ: يرجى تحديث قاعدة البيانات وتشغيل ملف supabase_schema.sql لإضافة عمود actual_winner');
-             return;
-           }
-           throw error;
-        }
-        toast.success("تم اعتماد النتيجة وتقييم التوقعات بنجاح!");
-        fetchMatches();
-      } catch (err) {
-        console.error(err);
-        toast.error("حدث خطأ أثناء حفظ النتيجة.");
+      if (error) {
+         if (error.message.includes("actual_winner")) {
+           toast.error('خطأ: يرجى تحديث قاعدة البيانات لتشمل actual_winner');
+           return;
+         }
+         throw error;
       }
+      toast.success("تم اعتماد النتيجة وتقييم التوقعات بنجاح!");
+      fetchMatches();
+    } catch (err) {
+      console.error(err);
+      toast.error("حدث خطأ أثناء حفظ النتيجة.");
     }
   };
 
@@ -88,9 +86,9 @@ export function ResultsManager() {
   );
 }
 
-function ResultCard({ match, onSave }: { match: any, onSave: (id: string, h: number, a: number, p: string, r: string, w: 'home'|'away'|'draw') => void }) {
-  const [home, setHome] = useState<number | ''>(match.home_score ?? '');
-  const [away, setAway] = useState<number | ''>(match.away_score ?? '');
+function ResultCard({ match, onSave }: { match: any, onSave: (id: string, h: number, a: number, p: 'none'|'home'|'away', r: 'none'|'home'|'away', w: 'home'|'away'|'draw') => void }) {
+  const [home, setHome] = useState<number | ''>(match.home_score !== null && match.home_score !== undefined ? match.home_score : 0);
+  const [away, setAway] = useState<number | ''>(match.away_score !== null && match.away_score !== undefined ? match.away_score : 0);
   const [penalty, setPenalty] = useState<'none'|'home'|'away'>(match.actual_penalty ?? 'none');
   const [redCard, setRedCard] = useState<'none'|'home'|'away'>(match.actual_red_card ?? 'none');
   const [winner, setWinner] = useState<'home'|'away'|'draw' | ''>(match.actual_winner ?? '');
