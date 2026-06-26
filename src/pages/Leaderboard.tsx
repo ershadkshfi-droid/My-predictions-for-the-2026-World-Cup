@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { motion } from 'motion/react';
 import { Trophy, Medal, Star } from 'lucide-react';
+import { getDefaultAvatar } from '../lib/avatar';
 
 export function Leaderboard() {
   const [users, setUsers] = useState<any[]>([]);
@@ -85,10 +86,10 @@ export function Leaderboard() {
               <div className="relative mb-4">
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-slate-300 bg-slate-100 dark:bg-slate-800 overflow-hidden shadow-lg shadow-slate-300/30">
                    <img 
-                     src={top3[1].avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${top3[1].username}&backgroundColor=b6e3f4`} 
+                     src={top3[1].avatar_url || getDefaultAvatar(top3[1].username)} 
                      alt="Avatar" 
                      className="w-full h-full object-cover" 
-                     onError={(e) => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${top3[1].username}&backgroundColor=b6e3f4` }}
+                     onError={(e) => { (e.target as HTMLImageElement).src = getDefaultAvatar(top3[1].username) }}
                    />
                 </div>
                 <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 bg-slate-300 text-slate-800 font-black rounded-full flex items-center justify-center text-sm shadow-md border-2 border-white dark:border-neutral-950">2</div>
@@ -114,10 +115,10 @@ export function Leaderboard() {
               <div className="relative mb-4">
                 <div className="w-24 h-24 md:w-32 md:h-32 rounded-full border-4 border-amber-400 bg-amber-100 dark:bg-amber-900/30 overflow-hidden shadow-xl shadow-amber-500/40">
                    <img 
-                     src={top3[0].avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${top3[0].username}&backgroundColor=b6e3f4`} 
+                     src={top3[0].avatar_url || getDefaultAvatar(top3[0].username)} 
                      alt="Avatar" 
                      className="w-full h-full object-cover" 
-                     onError={(e) => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${top3[0].username}&backgroundColor=b6e3f4` }}
+                     onError={(e) => { (e.target as HTMLImageElement).src = getDefaultAvatar(top3[0].username) }}
                    />
                 </div>
                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-10 h-10 bg-gradient-to-br from-amber-300 to-amber-500 text-white font-black rounded-full flex items-center justify-center text-base shadow-lg border-2 border-white dark:border-neutral-950">1</div>
@@ -143,10 +144,10 @@ export function Leaderboard() {
               <div className="relative mb-4">
                 <div className="w-20 h-20 md:w-24 md:h-24 rounded-full border-4 border-amber-700 bg-amber-50 dark:bg-amber-950/30 overflow-hidden shadow-lg shadow-amber-900/30">
                    <img 
-                     src={top3[2].avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${top3[2].username}&backgroundColor=b6e3f4`} 
+                     src={top3[2].avatar_url || getDefaultAvatar(top3[2].username)} 
                      alt="Avatar" 
                      className="w-full h-full object-cover" 
-                     onError={(e) => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${top3[2].username}&backgroundColor=b6e3f4` }}
+                     onError={(e) => { (e.target as HTMLImageElement).src = getDefaultAvatar(top3[2].username) }}
                    />
                 </div>
                 <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 w-8 h-8 bg-amber-700 text-white font-black rounded-full flex items-center justify-center text-sm shadow-md border-2 border-white dark:border-neutral-950">3</div>
@@ -187,10 +188,10 @@ export function Leaderboard() {
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 overflow-hidden border border-emerald-200 dark:border-emerald-800">
                              <img 
-                               src={user.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username}&backgroundColor=b6e3f4`} 
+                               src={user.avatar_url || getDefaultAvatar(user.username)} 
                                alt={user.username} 
                                className="w-full h-full object-cover" 
-                               onError={(e) => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username}&backgroundColor=b6e3f4` }}
+                               onError={(e) => { (e.target as HTMLImageElement).src = getDefaultAvatar(user.username) }}
                              />
                           </div>
                           <span className="font-bold text-neutral-900 dark:text-white text-base">{user.username}</span>

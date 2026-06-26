@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { Users, Search, Edit2, Trash2, X, Save } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { getDefaultAvatar } from '../../lib/avatar';
 
 export function UsersManager() {
   const [usersList, setUsersList] = useState<any[]>([]);
@@ -146,10 +147,10 @@ export function UsersManager() {
                     <td className="p-4 font-bold">
                       <div className="flex items-center gap-3">
                         <img 
-                          src={user.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username}&backgroundColor=b6e3f4`} 
+                          src={user.avatar_url || getDefaultAvatar(user.username)} 
                           alt="avatar" 
                           className="w-8 h-8 rounded-full object-cover" 
-                          onError={(e) => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username}&backgroundColor=b6e3f4` }}
+                          onError={(e) => { (e.target as HTMLImageElement).src = getDefaultAvatar(user.username) }}
                         />
                         {user.username}
                       </div>

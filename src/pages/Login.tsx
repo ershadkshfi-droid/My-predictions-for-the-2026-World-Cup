@@ -4,6 +4,7 @@ import { Trophy, Mail, Lock, ArrowLeft, Eye, EyeOff, AlertCircle, Globe } from '
 import { motion, AnimatePresence } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { getDefaultAvatar } from '../lib/avatar';
 
 export function Login() {
   const { session, userProfile, loading: authLoading, reloadProfile } = useAuth();
@@ -420,9 +421,9 @@ export function Login() {
                {/* بطاقة إحصائية وهمية للزينة */}
                <div className="bg-black/20 rounded-2xl p-4 border border-white/10 flex items-center justify-between">
                  <div className="flex -space-x-3 -space-x-reverse">
-                   <img src="https://api.dicebear.com/9.x/avataaars/svg?seed=A&backgroundColor=b6e3f4" className="w-10 h-10 rounded-full border-2 border-emerald-800" alt="user" />
-                   <img src="https://api.dicebear.com/9.x/avataaars/svg?seed=B&backgroundColor=c0aede" className="w-10 h-10 rounded-full border-2 border-emerald-800" alt="user" />
-                   <img src="https://api.dicebear.com/9.x/avataaars/svg?seed=C&backgroundColor=d1fae5" className="w-10 h-10 rounded-full border-2 border-emerald-800" alt="user" />
+                   <img src={getDefaultAvatar('A')} className="w-10 h-10 rounded-full border-2 border-emerald-800" alt="user" />
+                   <img src={getDefaultAvatar('B', 'c0aede')} className="w-10 h-10 rounded-full border-2 border-emerald-800" alt="user" />
+                   <img src={getDefaultAvatar('C', 'd1fae5')} className="w-10 h-10 rounded-full border-2 border-emerald-800" alt="user" />
                    <div className="w-10 h-10 rounded-full border-2 border-emerald-800 bg-emerald-600 flex items-center justify-center text-xs font-bold text-white z-10">+2k</div>
                  </div>
                  <div className="text-left text-sm" dir="ltr">

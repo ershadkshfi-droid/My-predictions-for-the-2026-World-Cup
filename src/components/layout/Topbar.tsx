@@ -3,6 +3,7 @@ import { Menu, Bell, Sun, Moon, Search, LogOut } from 'lucide-react';
 import { useTheme } from '../../context/ThemeContext';
 import { useAuth } from '../../context/AuthContext';
 import { AnimatePresence, motion } from 'motion/react';
+import { getDefaultAvatar } from '../../lib/avatar';
 
 export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
   const { theme, toggleTheme } = useTheme();
@@ -113,10 +114,10 @@ export function Topbar({ onMenuClick }: { onMenuClick: () => void }) {
 
         <div className="flex items-center gap-3 bg-neutral-100 dark:bg-neutral-900 p-1.5 rounded-2xl pr-2">
           <img 
-            src={userProfile?.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${displayName}&backgroundColor=d1fae5`}
+            src={userProfile?.avatar_url || getDefaultAvatar(displayName, 'd1fae5')}
             alt="User Avatar" 
             className="w-10 h-10 rounded-xl bg-neutral-200 object-cover shadow-sm border border-neutral-200 dark:border-neutral-800"
-            onError={(e) => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${displayName}&backgroundColor=d1fae5` }}
+            onError={(e) => { (e.target as HTMLImageElement).src = getDefaultAvatar(displayName, 'd1fae5') }}
           />
           <div className="hidden sm:flex flex-col text-right mr-1 min-w-[80px]">
             <span className="text-sm font-bold text-neutral-900 dark:text-white leading-tight mb-0.5">{displayName}</span>

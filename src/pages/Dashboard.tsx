@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
 import { Trophy, Activity, Target, Flame, Users, CalendarDays, CheckCircle2, XCircle, TrendingUp, Presentation, Clock } from 'lucide-react';
 import { motion } from 'motion/react';
+import { getDefaultAvatar } from '../lib/avatar';
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -348,10 +349,10 @@ function GlobalStats() {
                     <span className="font-bold text-neutral-400 w-4 text-center">{idx + 1}</span>
                     <div className="w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 overflow-hidden border border-emerald-200 dark:border-emerald-800">
                        <img 
-                         src={user.avatar_url || `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username}&backgroundColor=b6e3f4`} 
+                         src={user.avatar_url || getDefaultAvatar(user.username)} 
                          alt={user.username} 
                          className="w-full h-full object-cover" 
-                         onError={(e) => { (e.target as HTMLImageElement).src = `https://api.dicebear.com/9.x/avataaars/svg?seed=${user.username}&backgroundColor=b6e3f4` }}
+                         onError={(e) => { (e.target as HTMLImageElement).src = getDefaultAvatar(user.username) }}
                        />
                     </div>
                     <span className="font-bold">{user.username}</span>

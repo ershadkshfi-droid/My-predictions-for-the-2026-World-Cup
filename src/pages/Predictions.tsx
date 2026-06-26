@@ -54,17 +54,19 @@ export function Predictions() {
   const fetchTodayMatches = async () => {
     setLoading(true);
     try {
-      const todayStart = new Date();
+      const now = new Date();
+      // بداية اليوم الحالي لعرض مباريات اليوم التي بدأت بالفعل
+      const todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
       
-      const todayEnd = new Date();
-      todayEnd.setHours(23, 59, 59, 999);
+      // جلب المباريات حتى 24 ساعة من الآن لتظهر قبل موعدها بيوم
+      const next24Hours = new Date(now.getTime() + 24 * 60 * 60 * 1000);
 
       const { data: matchesData, error: matchesError } = await supabase
         .from('matches')
         .select('*')
         .gte('match_date', todayStart.toISOString())
-        .lte('match_date', todayEnd.toISOString())
+        .lte('match_date', next24Hours.toISOString())
         .order('match_date', { ascending: true });
 
       if (matchesError) throw matchesError;
