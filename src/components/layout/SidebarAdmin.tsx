@@ -1,8 +1,9 @@
-import { Users, Swords, Settings, ShieldCheck, Gamepad2 } from 'lucide-react';
+import { Users, Swords, Settings, ShieldCheck, Gamepad2, History } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 
 const ADMIN_MENU_ITEMS = [
   { icon: Users, label: 'إدارة المستخدمين', href: '/admin/users' },
+  { icon: History, label: 'التقييمات السابقة', href: '/admin/previous-evaluations' },
   { icon: Swords, label: 'إدارة المباريات', href: '/admin/matches' },
   { icon: Gamepad2, label: 'إدارة النتائج', href: '/admin/results' },
   { icon: Settings, label: 'الإعدادات', href: '/admin/settings' },

@@ -6,6 +6,7 @@ ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS exact_scores INTEGER
 ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS correct_winners INTEGER DEFAULT 0;
 ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS correct_penalties INTEGER DEFAULT 0;
 ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS correct_red_cards INTEGER DEFAULT 0;
+ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS successful_predictions INTEGER DEFAULT 0;
 
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
@@ -16,6 +17,7 @@ CREATE TABLE IF NOT EXISTS public.users (
   total_points INTEGER DEFAULT 0,
   rank INTEGER,
   played_predictions INTEGER DEFAULT 0,
+  successful_predictions INTEGER DEFAULT 0,
   exact_scores INTEGER DEFAULT 0,
   correct_winners INTEGER DEFAULT 0,
   correct_penalties INTEGER DEFAULT 0,
@@ -266,6 +268,12 @@ BEGIN
         SELECT COALESCE(SUM(p.points_earned), 0)
         FROM public.predictions p
         WHERE p.user_id = u.id
+      ),
+      successful_predictions = (
+        SELECT COUNT(p.id)
+        FROM public.predictions p
+        JOIN public.matches m ON p.match_id = m.id
+        WHERE p.user_id = u.id AND m.status = 'finished' AND p.points_earned > 0
       ),
       exact_scores = (
         SELECT COUNT(p.id)

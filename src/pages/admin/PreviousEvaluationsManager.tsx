@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Users, Search, Edit2, Trash2, X, Save, Download } from 'lucide-react';
+import { Search, Edit2, X, Save, History } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { getDefaultAvatar } from '../../lib/avatar';
-import * as XLSX from 'xlsx';
 
-export function UsersManager() {
+export function PreviousEvaluationsManager() {
   const [usersList, setUsersList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingUser, setEditingUser] = useState<any | null>(null);
-  const [editForm, setEditForm] = useState({ username: '', avatar_url: '', role: 'user' });
+  const [editForm, setEditForm] = useState({ previous_predictions: 0, previous_points: 0 });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState({ type: '', text: '' });
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -20,7 +20,7 @@ export function UsersManager() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
+      const { data, error } = await supabase.from('users').select('*').order('username', { ascending: true });
       if (error) throw error;
       setUsersList(data || []);
     } catch (e) {
@@ -33,43 +33,10 @@ export function UsersManager() {
   const handleEditClick = (user: any) => {
     setEditingUser(user);
     setEditForm({
-      username: user.username || '',
-      avatar_url: user.avatar_url || '',
-      role: user.role || 'user'
+      previous_predictions: user.previous_predictions || 0,
+      previous_points: user.previous_points || 0
     });
     setMessage({ type: '', text: '' });
-  };
-
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      const file = event.target.files?.[0];
-      if (!file) return;
-
-      setSaving(true);
-      setMessage({ type: 'info', text: 'جاري رفع الصورة...' });
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Math.random()}.${fileExt}`;
-      const filePath = `avatars/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(filePath, file);
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage.from('avatars').getPublicUrl(filePath);
-      
-      setEditForm({ ...editForm, avatar_url: data.publicUrl });
-      setMessage({ type: 'success', text: 'تم رفع الصورة بنجاح. لا تنس حفظ التعديلات.' });
-    } catch (error: any) {
-      console.error('Error uploading image:', error);
-      setMessage({ type: 'error', text: 'حدث خطأ أثناء رفع الصورة.' });
-    } finally {
-      setSaving(false);
-    }
   };
 
   const handleSaveUser = async () => {
@@ -80,15 +47,17 @@ export function UsersManager() {
       const { error } = await supabase
         .from('users')
         .update({
-          username: editForm.username,
-          avatar_url: editForm.avatar_url,
-          role: editForm.role
+          previous_predictions: editForm.previous_predictions,
+          previous_points: editForm.previous_points
         })
         .eq('id', editingUser.id);
         
       if (error) throw error;
       
-      setMessage({ type: 'success', text: 'تم تحديث بيانات المستخدم بنجاح' });
+      // إجبار إعادة الحساب المجموع الكلي
+      await supabase.rpc('recalculate_user_stats', { p_user_id: editingUser.id });
+      
+      setMessage({ type: 'success', text: 'تم تحديث التقييمات السابقة بنجاح' });
       
       // Update local state
       setUsersList(usersList.map(u => 
@@ -106,74 +75,18 @@ export function UsersManager() {
     }
   };
 
-  const handleExportExcel = () => {
-    if (!usersList.length) return;
-    
-    // Format data for Excel
-    const dataToExport = usersList.map((user, index) => ({
-      '#': index + 1,
-      'المعرف (ID)': user.id,
-      'الاسم': user.username || 'بدون اسم',
-      'البريد الإلكتروني': user.email || '',
-      'الدور': user.role,
-      'مجموع النقاط': user.total_points || 0,
-      'الترتيب': user.rank || '',
-      'تاريخ الانضمام': user.created_at ? new Date(user.created_at).toLocaleDateString('ar-SA') : '',
-      'رابط الصورة': user.avatar_url || '',
-      'التوقعات الملعوبة': user.played_predictions || 0,
-      'النتائج الدقيقة': user.exact_scores || 0,
-      'الفائز الصحيح': user.correct_winners || 0,
-      'ضربات جزاء صحيحة': user.correct_penalties || 0,
-      'بطاقات حمراء صحيحة': user.correct_red_cards || 0,
-      'التوقعات السابقة': user.previous_predictions || 0,
-      'النقاط السابقة': user.previous_points || 0,
-      'التوقعات الناجحة': user.successful_predictions || 0,
-    }));
-
-    const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-    
-    // Set column width for better readability
-    const wscols = [
-      { wch: 5 }, // #
-      { wch: 40 }, // id
-      { wch: 20 }, // Username
-      { wch: 30 }, // Email
-      { wch: 10 }, // Role
-      { wch: 15 }, // total_points
-      { wch: 10 }, // rank
-      { wch: 15 }, // created_at
-      { wch: 40 }, // avatar_url
-      { wch: 15 }, // played_predictions
-      { wch: 15 }, // exact_scores
-      { wch: 15 }, // correct_winners
-      { wch: 15 }, // correct_penalties
-      { wch: 15 }, // correct_red_cards
-      { wch: 15 }, // previous_predictions
-      { wch: 15 }, // previous_points
-      { wch: 15 }, // successful_predictions
-    ];
-    worksheet['!cols'] = wscols;
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "المستخدمين");
-    
-    XLSX.writeFile(workbook, `users_export_${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
+  const filteredUsers = usersList.filter(user => 
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   return (
     <div className="space-y-8 relative">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-3xl font-black mb-2">إدارة المستخدمين</h2>
-          <p className="text-neutral-500">إدارة حسابات المستخدمين وصلاحياتهم</p>
+          <h2 className="text-3xl font-black mb-2">التقييمات السابقة</h2>
+          <p className="text-neutral-500">حصر وإدارة التوقعات والنقاط السابقة للمستخدمين</p>
         </div>
-        <button
-          onClick={handleExportExcel}
-          className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl font-bold transition-colors"
-        >
-          <Download className="w-5 h-5" />
-          نتائج المستخدمين
-        </button>
       </div>
 
       <div className="bg-white dark:bg-neutral-900 border border-neutral-200/80 dark:border-neutral-800 rounded-3xl overflow-hidden shadow-sm">
@@ -183,6 +96,8 @@ export function UsersManager() {
             <input 
               type="text" 
               placeholder="ابحث عن مستخدم..." 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl py-2.5 pr-12 pl-4 focus:outline-none focus:ring-2 focus:ring-rose-500/30"
             />
           </div>
@@ -194,16 +109,16 @@ export function UsersManager() {
               <tr className="bg-neutral-50 dark:bg-neutral-900 border-b border-neutral-200 dark:border-neutral-800 text-neutral-500 font-bold text-sm">
                 <th className="p-4 w-16">#</th>
                 <th className="p-4">المستخدم</th>
-                <th className="p-4">البريد الإلكتروني</th>
-                <th className="p-4">الدور</th>
+                <th className="p-4 text-center">توقعات سابقة</th>
+                <th className="p-4 text-center">نقاط سابقة</th>
                 <th className="p-4 text-left">إجراءات</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
                 <tr><td colSpan={5} className="p-8 text-center text-neutral-500">جاري التحميل...</td></tr>
-              ) : usersList.length > 0 ? (
-                usersList.map((user, idx) => (
+              ) : filteredUsers.length > 0 ? (
+                filteredUsers.map((user, idx) => (
                   <tr key={user.id} className="border-b border-neutral-100 dark:border-neutral-800/60 hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
                     <td className="p-4 text-neutral-500 font-medium">{idx + 1}</td>
                     <td className="p-4 font-bold">
@@ -217,11 +132,11 @@ export function UsersManager() {
                         {user.username}
                       </div>
                     </td>
-                    <td className="p-4 text-neutral-600 dark:text-neutral-400 font-medium dir-ltr text-right">{user.email}</td>
-                    <td className="p-4">
-                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold ${user.role === 'admin' ? 'bg-rose-100 text-rose-700 dark:bg-rose-500/20 dark:text-rose-400' : 'bg-neutral-100 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300'}`}>
-                        {user.role === 'admin' ? 'مدير' : 'مستخدم'}
-                      </span>
+                    <td className="p-4 text-center text-neutral-600 dark:text-neutral-400 font-bold">
+                      {user.previous_predictions || 0}
+                    </td>
+                    <td className="p-4 text-center text-amber-600 dark:text-amber-500 font-bold">
+                      {user.previous_points || 0}
                     </td>
                     <td className="p-4 text-left space-x-2 space-x-reverse">
                       <button 
@@ -252,7 +167,10 @@ export function UsersManager() {
               className="bg-white dark:bg-neutral-900 rounded-3xl shadow-2xl w-full max-w-md overflow-hidden"
             >
               <div className="p-6 border-b border-neutral-100 dark:border-neutral-800 flex justify-between items-center">
-                <h3 className="text-xl font-bold">تعديل بيانات المستخدم</h3>
+                <h3 className="text-xl font-bold flex items-center gap-2">
+                  <History className="w-5 h-5 text-neutral-400" />
+                  تعديل التقييمات السابقة
+                </h3>
                 <button 
                   onClick={() => setEditingUser(null)}
                   className="p-2 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-200 transition-colors bg-neutral-100 dark:bg-neutral-800 rounded-full"
@@ -268,48 +186,40 @@ export function UsersManager() {
                   </div>
                 )}
                 
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300">اسم المستخدم</label>
-                  <input
-                    type="text"
-                    value={editForm.username}
-                    onChange={(e) => setEditForm({...editForm, username: e.target.value})}
-                    className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
+                <div className="flex items-center gap-3 mb-6 p-4 bg-neutral-50 dark:bg-neutral-800/50 rounded-xl border border-neutral-100 dark:border-neutral-800">
+                  <img 
+                    src={editingUser.avatar_url || getDefaultAvatar(editingUser.username)} 
+                    alt="avatar" 
+                    className="w-12 h-12 rounded-full object-cover" 
                   />
+                  <div>
+                    <div className="font-bold">{editingUser.username}</div>
+                    <div className="text-sm text-neutral-500">{editingUser.email}</div>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300">الصورة الشخصية</label>
+                  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300">التوقعات السابقة</label>
                   <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleAvatarUpload}
-                    disabled={saving}
-                    className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100"
+                    type="number"
+                    min="0"
+                    value={editForm.previous_predictions}
+                    onChange={(e) => setEditForm({...editForm, previous_predictions: parseInt(e.target.value) || 0})}
+                    className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
                   />
-                  {editForm.avatar_url && (
-                    <div className="mt-2 flex justify-center">
-                      <img 
-                        src={editForm.avatar_url} 
-                        alt="Preview" 
-                        className="w-16 h-16 rounded-full object-cover border-2 border-neutral-200 dark:border-neutral-700"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
-                        onLoad={(e) => { (e.target as HTMLImageElement).style.display = 'block' }}
-                      />
-                    </div>
-                  )}
+                  <p className="text-xs text-neutral-500">إجمالي عدد المباريات التي توقعها المستخدم مسبقاً</p>
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300">الدور والصلاحيات</label>
-                  <select
-                    value={editForm.role}
-                    onChange={(e) => setEditForm({...editForm, role: e.target.value})}
+                  <label className="text-sm font-bold text-neutral-700 dark:text-neutral-300">النقاط السابقة</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={editForm.previous_points}
+                    onChange={(e) => setEditForm({...editForm, previous_points: parseInt(e.target.value) || 0})}
                     className="w-full bg-neutral-50 dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-emerald-500/50"
-                  >
-                    <option value="user">مستخدم (توقع)</option>
-                    <option value="admin">مدير النظام</option>
-                  </select>
+                  />
+                  <p className="text-xs text-neutral-500">إجمالي النقاط التي حصل عليها المستخدم مسبقاً</p>
                 </div>
               </div>
 
@@ -340,4 +250,3 @@ export function UsersManager() {
     </div>
   );
 }
-

@@ -78,6 +78,7 @@ function MyStats() {
     successRate: 0
   });
   const [chartData, setChartData] = useState<any[]>([]);
+  const [todayPredictions, setTodayPredictions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -136,6 +137,17 @@ function MyStats() {
         
         const gTimeline = Array.from(groupedMap.keys()).map(k => ({ date: k, points: groupedMap.get(k) }));
         setChartData(gTimeline);
+
+        // Populate todayPredictions
+        const todayStr = new Date().toDateString();
+        const todaysPreds = myPredictions?.filter(p => {
+          if (!p.matches?.match_date) return false;
+          return new Date(p.matches.match_date).toDateString() === todayStr;
+        }) || [];
+        
+        // Sort by match_date
+        todaysPreds.sort((a, b) => new Date(a.matches.match_date).getTime() - new Date(b.matches.match_date).getTime());
+        setTodayPredictions(todaysPreds);
         
       } catch (e) {
         console.error(e);
@@ -228,10 +240,59 @@ function MyStats() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm">
-          <h3 className="text-xl font-bold mb-6">تطور النقاط</h3>
-          <div className="w-full h-[250px] flex items-center justify-center">
-             <Line data={lineChartParams} options={{ maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { grid: { display: false } }, y: { grid: { color: '#e5e5e5' } } } }} />
+        <div className="bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800 rounded-3xl p-6 shadow-sm flex flex-col h-[350px]">
+          <h3 className="text-xl font-bold mb-4">توقعاتي لمباريات اليوم</h3>
+          <div className="w-full flex-1 overflow-y-auto pr-2 space-y-3 custom-scrollbar">
+            {todayPredictions.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-neutral-500">
+                <CalendarDays className="w-10 h-10 mb-2 opacity-50" />
+                <p>لا توجد توقعات لمباريات اليوم</p>
+              </div>
+            ) : (
+              todayPredictions.map(pred => (
+                <div key={pred.id} className="p-4 rounded-xl bg-neutral-50 dark:bg-neutral-800/50 border border-neutral-100 dark:border-neutral-800">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-xs font-bold px-2 py-1 bg-neutral-200 dark:bg-neutral-700 rounded-md">
+                      {new Date(pred.matches.match_date).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="text-xs text-neutral-500">{pred.matches.stage}</span>
+                  </div>
+                  <div className="flex justify-between items-center mb-3 font-bold text-sm">
+                    <span className="flex-1 text-center truncate px-1">{pred.matches.home_team}</span>
+                    <span className="text-neutral-400 mx-2">ضد</span>
+                    <span className="flex-1 text-center truncate px-1">{pred.matches.away_team}</span>
+                  </div>
+                  
+                  <div className="space-y-1.5 text-xs bg-white dark:bg-neutral-900 p-2.5 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">الفائز:</span>
+                      <span className="font-bold">
+                        {pred.winner_prediction === 'home' ? pred.matches.home_team : 
+                         pred.winner_prediction === 'away' ? pred.matches.away_team : 'تعادل'}
+                      </span>
+                    </div>
+                    {pred.home_score !== null && pred.away_score !== null && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-500">النتيجة:</span>
+                        <span className="font-bold font-mono tracking-widest">{pred.home_score} - {pred.away_score}</span>
+                      </div>
+                    )}
+                    {pred.penalty_prediction && (
+                      <div className="flex justify-between">
+                        <span className="text-neutral-500">ركلات الترجيح:</span>
+                        <span className="font-bold">
+                          {pred.penalty_prediction === 'home' ? pred.matches.home_team : pred.matches.away_team}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-neutral-500">كرت أحمر:</span>
+                      <span className="font-bold">{pred.red_card_prediction ? 'نعم' : 'لا'}</span>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -284,11 +345,35 @@ function GlobalStats() {
         });
 
         if (topUsersRes.data) {
-          const sorted = topUsersRes.data.map(u => ({
-            ...u,
-            successRate: Math.round(((u.exact_scores + u.correct_winners) / u.played_predictions) * 100)
-          })).sort((a, b) => b.successRate - a.successRate).slice(0, 5);
-          setTopAccuracyUsers(sorted);
+          const sorted = topUsersRes.data.map(u => {
+            // نعتمد على successful_predictions و played_predictions من قاعدة البيانات
+            // لأنها تم حسابها بدقة هناك وتشمل التوقعات السابقة
+            
+            const totalCorrect = u.successful_predictions !== undefined ? u.successful_predictions : (u.correct_winners || 0);
+            const totalPlayed = u.played_predictions || 0;
+            
+            const successRate = totalPlayed > 0 
+              ? Math.min(100, Math.round((totalCorrect / totalPlayed) * 100))
+              : 0;
+              
+            return {
+              ...u,
+              played_predictions: totalPlayed,
+              successRate
+            };
+          }).filter(u => (u.played_predictions || 0) >= 5).sort((a, b) => b.successRate - a.successRate).slice(0, 5);
+          
+          // إذا كان العدد صفر بسبب فلتر الـ 5 توقعات، نعرض أقل عدد
+          if (sorted.length === 0 && topUsersRes.data.length > 0) {
+            const fallbackSorted = topUsersRes.data.map(u => {
+              const totalCorrect = u.successful_predictions !== undefined ? u.successful_predictions : (u.correct_winners || 0);
+              const totalPlayed = u.played_predictions || 0;
+              return { ...u, played_predictions: totalPlayed, successRate: totalPlayed > 0 ? Math.min(100, Math.round((totalCorrect / totalPlayed) * 100)) : 0 };
+            }).sort((a, b) => b.successRate - a.successRate).slice(0, 5);
+            setTopAccuracyUsers(fallbackSorted);
+          } else {
+            setTopAccuracyUsers(sorted);
+          }
         }
 
       } catch (e) {

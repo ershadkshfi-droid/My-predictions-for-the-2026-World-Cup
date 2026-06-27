@@ -22,6 +22,7 @@ const Leaderboard = lazy(() => import("./pages/Leaderboard").then(module => ({ d
 
 // Admin Pages
 const UsersManager = lazy(() => import("./pages/admin/UsersManager").then(module => ({ default: module.UsersManager })));
+const PreviousEvaluationsManager = lazy(() => import("./pages/admin/PreviousEvaluationsManager").then(module => ({ default: module.PreviousEvaluationsManager })));
 const MatchesManager = lazy(() => import("./pages/admin/MatchesManager").then(module => ({ default: module.MatchesManager })));
 const ResultsManager = lazy(() => import("./pages/admin/ResultsManager").then(module => ({ default: module.ResultsManager })));
 const SettingsManager = lazy(() => import("./pages/admin/SettingsManager").then(module => ({ default: module.SettingsManager })));
@@ -107,6 +108,7 @@ function AppContent() {
       }>
         <Route index element={<Navigate to="users" replace />} />
         <Route path="users" element={<UsersManager />} />
+        <Route path="previous-evaluations" element={<PreviousEvaluationsManager />} />
         <Route path="matches" element={<MatchesManager />} />
         <Route path="results" element={<ResultsManager />} />
         <Route path="settings" element={<SettingsManager />} />

@@ -177,8 +177,10 @@ export function Leaderboard() {
               </thead>
               <tbody className="divide-y divide-neutral-100 dark:divide-neutral-800/50 text-sm font-medium">
                 {remainingUsers.map((user, idx) => {
-                  const successRate = user.played_predictions > 0 
-                    ? Math.round(((user.exact_scores + user.correct_winners) / user.played_predictions) * 100) 
+                  const totalCorrect = user.successful_predictions !== undefined ? user.successful_predictions : (user.correct_winners || 0);
+                  const totalPlayed = user.played_predictions || 0;
+                  const successRate = totalPlayed > 0 
+                    ? Math.min(100, Math.round((totalCorrect / totalPlayed) * 100))
                     : 0;
 
                   return (
