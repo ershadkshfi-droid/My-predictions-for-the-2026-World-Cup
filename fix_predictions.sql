@@ -1,7 +1,11 @@
 -- ==========================================
--- إصلاح خطأ (column "is_correct_winner" of relation "predictions" does not exist)
+-- إصلاح خطأ (column "updated_at" of relation "predictions" does not exist)
 -- انسخ هذا الكود وقم بتشغيله في SQL Editor في Supabase
 -- ==========================================
+
+-- Add updated_at column if it does not exist
+ALTER TABLE IF EXISTS public.predictions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 CREATE OR REPLACE FUNCTION public.evaluate_match_predictions(p_match_id UUID)
 RETURNS void AS $$
@@ -121,7 +125,8 @@ BEGIN
       JOIN public.matches m ON p.match_id = m.id
       WHERE p.user_id = u.id AND m.status = 'finished' AND m.actual_red_card != 'none' AND p.red_card_prediction = m.actual_red_card
     ),
-    updated_at = NOW();
+    updated_at = NOW()
+  WHERE u.id IS NOT NULL;
 
   -- Update ranks
   WITH ranked_users AS (
