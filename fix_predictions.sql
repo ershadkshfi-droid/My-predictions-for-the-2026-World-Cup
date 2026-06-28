@@ -1,52 +1,8 @@
 -- ==========================================
--- إضافة أعمدة التقييمات السابقة
--- شغل هذا الكود في SQL Editor في Supabase
+-- إصلاح خطأ (column "is_correct_winner" of relation "predictions" does not exist)
+-- انسخ هذا الكود وقم بتشغيله في SQL Editor في Supabase
 -- ==========================================
 
-ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS previous_predictions INTEGER DEFAULT 0;
-ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS previous_points INTEGER DEFAULT 0;
-
-ALTER TABLE IF EXISTS public.users ADD COLUMN IF NOT EXISTS successful_predictions INTEGER DEFAULT 0;
-
--- دالة لإعادة حساب إحصائيات مستخدم محدد
-CREATE OR REPLACE FUNCTION public.recalculate_user_stats(p_user_id UUID)
-RETURNS void AS $$
-BEGIN
-  UPDATE public.users u
-  SET 
-    played_predictions = GREATEST(COALESCE(u.previous_predictions, 0), CEIL(COALESCE(u.previous_points, 0) / 2.0)::INTEGER) + (
-      SELECT COUNT(p.id)
-      FROM public.predictions p
-      JOIN public.matches m ON p.match_id = m.id
-      WHERE p.user_id = u.id AND m.status = 'finished'
-    ),
-    successful_predictions = LEAST(GREATEST(COALESCE(u.previous_predictions, 0), CEIL(COALESCE(u.previous_points, 0) / 2.0)::INTEGER), CEIL(COALESCE(u.previous_points, 0) / 3.0)::INTEGER) + (
-      SELECT COUNT(p.id)
-      FROM public.predictions p
-      JOIN public.matches m ON p.match_id = m.id
-      WHERE p.user_id = u.id AND m.status = 'finished' AND p.points_earned > 0
-    ),
-    total_points = COALESCE(u.previous_points, 0) + (
-      SELECT COALESCE(SUM(p.points_earned), 0)
-      FROM public.predictions p
-      WHERE p.user_id = u.id
-    ),
-    updated_at = NOW()
-  WHERE u.id = p_user_id;
-
-  -- Update ranks
-  WITH ranked_users AS (
-    SELECT id, RANK() OVER (ORDER BY total_points DESC, exact_scores DESC, correct_winners DESC, username ASC) as user_rank
-    FROM public.users
-  )
-  UPDATE public.users u
-  SET rank = r.user_rank
-  FROM ranked_users r
-  WHERE u.id = r.id;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- تحديث دالة التقييم لجمع النقاط السابقة مع الحالية
 CREATE OR REPLACE FUNCTION public.evaluate_match_predictions(p_match_id UUID)
 RETURNS void AS $$
 DECLARE
@@ -177,7 +133,7 @@ BEGIN
   FROM ranked_users r
   WHERE u.id = r.id;
 
-  -- Insert evaluation log (حفظ السجلات)
+  -- Insert evaluation log
   INSERT INTO public.evaluation_logs (match_id, predictions_processed, details)
   VALUES (p_match_id, v_processed_count, 'Match evaluated successfully. Winner: ' || v_match_result || ', Score: ' || v_home_score || '-' || v_away_score || ', Penalty: ' || v_actual_penalty || ', Red Card: ' || v_actual_red_card);
 
